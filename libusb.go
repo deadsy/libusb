@@ -51,11 +51,136 @@ const LIBUSB_API_VERSION = C.LIBUSB_API_VERSION
 //-----------------------------------------------------------------------------
 // structures
 
+type Device_Descriptor struct {
+	bLength            uint8
+	bDescriptorType    uint8
+	bcdUSB             uint16
+	bDeviceClass       uint8
+	bDeviceSubClass    uint8
+	bDeviceProtocol    uint8
+	bMaxPacketSize0    uint8
+	idVendor           uint16
+	idProduct          uint16
+	bcdDevice          uint16
+	iManufacturer      uint8
+	iProduct           uint8
+	iSerialNumber      uint8
+	bNumConfigurations uint8
+}
+
+/*
+
+struct libusb_endpoint_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint8_t  bEndpointAddress;
+	uint8_t  bmAttributes;
+	uint16_t wMaxPacketSize;
+	uint8_t  bInterval;
+	uint8_t  bRefresh;
+	uint8_t  bSynchAddress;
+	const unsigned char *extra;
+	int extra_length;
+};
+
+struct libusb_interface_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint8_t  bInterfaceNumber;
+	uint8_t  bAlternateSetting;
+	uint8_t  bNumEndpoints;
+	uint8_t  bInterfaceClass;
+	uint8_t  bInterfaceSubClass;
+	uint8_t  bInterfaceProtocol;
+	uint8_t  iInterface;
+	const struct libusb_endpoint_descriptor *endpoint;
+	const unsigned char *extra;
+	int extra_length;
+};
+
+struct libusb_interface {
+	const struct libusb_interface_descriptor *altsetting;
+	int num_altsetting;
+};
+
+struct libusb_config_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint16_t wTotalLength;
+	uint8_t  bNumInterfaces;
+	uint8_t  bConfigurationValue;
+	uint8_t  iConfiguration;
+	uint8_t  bmAttributes;
+	uint8_t  MaxPower;
+	const struct libusb_interface *interface;
+	const unsigned char *extra;
+	int extra_length;
+};
+
+struct libusb_ss_endpoint_companion_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint8_t  bMaxBurst;
+	uint8_t  bmAttributes;
+	uint16_t wBytesPerInterval;
+};
+
+struct libusb_bos_dev_capability_descriptor {
+	uint8_t bLength;
+	uint8_t bDescriptorType;
+	uint8_t bDevCapabilityType;
+	uint8_t dev_capability_data
+};
+
+struct libusb_bos_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint16_t wTotalLength;
+	uint8_t  bNumDeviceCaps;
+	struct libusb_bos_dev_capability_descriptor *dev_capability
+};
+
+struct libusb_usb_2_0_extension_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint8_t  bDevCapabilityType;
+	uint32_t  bmAttributes;
+};
+
+struct libusb_ss_usb_device_capability_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint8_t  bDevCapabilityType;
+	uint8_t  bmAttributes;
+	uint16_t wSpeedSupported;
+	uint8_t  bFunctionalitySupport;
+	uint8_t  bU1DevExitLat;
+	uint16_t bU2DevExitLat;
+};
+
+struct libusb_container_id_descriptor {
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint8_t  bDevCapabilityType;
+	uint8_t bReserved;
+	uint8_t  ContainerID[16];
+};
+
+struct libusb_control_setup {
+	uint8_t  bmRequestType;
+	uint8_t  bRequest;
+	uint16_t wValue;
+	uint16_t wIndex;
+	uint16_t wLength;
+};
+
+*/
+
 type Version struct {
-	major    int
-	minor    int
-	micro    int
-	nano     int
+	major    uint16
+	minor    uint16
+	micro    uint16
+	nano     uint16
 	rc       string
 	describe string
 }
@@ -102,10 +227,10 @@ func Set_Debug(level int) {
 func Get_Version() *Version {
 	ver := (*C.struct_libusb_version)(unsafe.Pointer(C.libusb_get_version()))
 	return &Version{
-		major:    int(ver.major),
-		minor:    int(ver.minor),
-		micro:    int(ver.micro),
-		nano:     int(ver.nano),
+		major:    uint16(ver.major),
+		minor:    uint16(ver.minor),
+		micro:    uint16(ver.micro),
+		nano:     uint16(ver.nano),
 		rc:       C.GoString(ver.rc),
 		describe: C.GoString(ver.describe),
 	}
@@ -114,5 +239,13 @@ func Get_Version() *Version {
 func Error_Name(code int) string {
 	return C.GoString(C.libusb_error_name(C.int(code)))
 }
+
+//func Get_Device_List() ([]Device, error) {
+//ssize_t LIBUSB_CALL libusb_get_device_list(libusb_context *ctx, libusb_device ***list);
+//}
+
+//func Free_Device_List() ([]Device, error) {
+//void libusb_free_device_list	(	libusb_device ** 	list, int 	unref_devices )
+//}
 
 //-----------------------------------------------------------------------------
