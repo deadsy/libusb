@@ -9,11 +9,14 @@ Test functions for libusb-1.0
 package libusb
 
 import (
-	"fmt"
+	"log"
+	"os"
 	"testing"
 )
 
 //-----------------------------------------------------------------------------
+
+var logger = log.New(os.Stdout, "", log.Lshortfile)
 
 func Test_Error_Name(t *testing.T) {
 
@@ -29,7 +32,7 @@ func Test_Version(t *testing.T) {
 	if err != nil {
 		t.Error("FAIL")
 	}
-	fmt.Printf("%+v\n", Get_Version())
+	logger.Printf("%+v\n", Get_Version())
 }
 
 //-----------------------------------------------------------------------------
