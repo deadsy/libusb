@@ -16,8 +16,6 @@ import "C"
 
 import (
 	"fmt"
-	"path"
-	"runtime"
 	"unsafe"
 )
 
@@ -66,33 +64,29 @@ type Version struct {
 // errors
 
 type libusb_error_t struct {
+	name string
 	code int
-	file string
-	line int
 }
 
 func (e *libusb_error_t) Error() string {
-	return fmt.Sprintf("libusb_error(%s, line %d): %s(%d)", path.Base(e.file), e.line,
-		Error_Name(e.code), e.code)
+	return fmt.Sprintf("libusb_error: %s returned %d(%s)", e.name, e.code, Error_Name(e.code))
 }
 
-func libusb_error(code int) error {
-	var e libusb_error_t
-	_, file, line, ok := runtime.Caller(1)
-	if ok {
-		e.file = file
-		e.line = line
+func libusb_error(name string, code int) error {
+	return &libusb_error_t{
+		name: name,
+		code: code,
 	}
-	e.code = code
-	return &e
 }
 
 //-----------------------------------------------------------------------------
 
+// TODO: implement context parameter
+
 func Init() error {
 	rc := int(C.libusb_init(nil))
 	if rc != LIBUSB_SUCCESS {
-		return libusb_error(rc)
+		return libusb_error("libusb_init", rc)
 	}
 	return nil
 }

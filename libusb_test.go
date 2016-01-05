@@ -16,12 +16,11 @@ import (
 //-----------------------------------------------------------------------------
 
 func Test_Error_Name(t *testing.T) {
-	err := Init()
-	defer Exit()
-	if err != nil {
+
+	if Error_Name(LIBUSB_ERROR_BUSY) != "LIBUSB_ERROR_BUSY" {
 		t.Error("FAIL")
 	}
-	fmt.Printf("%s\n", Error_Name(LIBUSB_ERROR_BUSY))
+
 }
 
 func Test_Version(t *testing.T) {
