@@ -16,6 +16,7 @@ import "C"
 
 import (
 	"fmt"
+	"reflect"
 	"unsafe"
 )
 
@@ -176,6 +177,11 @@ struct libusb_control_setup {
 
 */
 
+type Context *C.struct_libusb_context
+type Device *C.struct_libusb_device
+type Device_Handle *C.struct_libusb_device_handle
+type Hotplug_Callback *C.struct_libusb_hotplug_callback
+
 type Version struct {
 	major    uint16
 	minor    uint16
@@ -206,22 +212,8 @@ func libusb_error(name string, code int) error {
 
 //-----------------------------------------------------------------------------
 
-type Context *C.struct_libusb_context
-
-func Init(ctx *Context) error {
-	rc := int(C.libusb_init((**C.struct_libusb_context)(ctx)))
-	if rc != LIBUSB_SUCCESS {
-		return libusb_error("libusb_init", rc)
-	}
-	return nil
-}
-
-func Exit(ctx Context) {
-	C.libusb_exit(ctx)
-}
-
-func Set_Debug(ctx Context, level int) {
-	C.libusb_set_debug(ctx, C.int(level))
+func Error_Name(code int) string {
+	return C.GoString(C.libusb_error_name(C.int(code)))
 }
 
 func Get_Version() *Version {
@@ -236,16 +228,52 @@ func Get_Version() *Version {
 	}
 }
 
-func Error_Name(code int) string {
-	return C.GoString(C.libusb_error_name(C.int(code)))
+//-----------------------------------------------------------------------------
+// Library initialization/deinitialization
+
+func Set_Debug(ctx Context, level int) {
+	C.libusb_set_debug(ctx, C.int(level))
 }
 
-//func Get_Device_List() ([]Device, error) {
-//ssize_t LIBUSB_CALL libusb_get_device_list(libusb_context *ctx, libusb_device ***list);
-//}
+func Init(ctx *Context) error {
+	rc := int(C.libusb_init((**C.struct_libusb_context)(ctx)))
+	if rc != LIBUSB_SUCCESS {
+		return libusb_error("libusb_init", rc)
+	}
+	return nil
+}
 
-//func Free_Device_List() ([]Device, error) {
-//void libusb_free_device_list	(	libusb_device ** 	list, int 	unref_devices )
-//}
+func Exit(ctx Context) {
+	C.libusb_exit(ctx)
+}
+
+//-----------------------------------------------------------------------------
+// Device handling and enumeration
+
+func Get_Device_List(ctx Context) ([]Device, error) {
+	var hdl **C.struct_libusb_device
+	rc := int(C.libusb_get_device_list(ctx, (***C.struct_libusb_device)(&hdl)))
+	if rc < 0 {
+		return nil, libusb_error("libusb_get_device_list", rc)
+	}
+	if rc == 0 {
+		// no devices
+		return nil, nil
+	}
+	// turn the c array into a slice of device pointers
+	var list []Device
+	hdr := (*reflect.SliceHeader)((unsafe.Pointer(&list)))
+	hdr.Cap = rc
+	hdr.Len = rc
+	hdr.Data = uintptr(unsafe.Pointer(hdl))
+	return list, nil
+}
+
+func Free_Device_List(list []Device, unref_devices int) {
+	if list == nil {
+		return
+	}
+	C.libusb_free_device_list((**C.struct_libusb_device)(&list[0]), C.int(unref_devices))
+}
 
 //-----------------------------------------------------------------------------
