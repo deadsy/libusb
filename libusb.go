@@ -206,22 +206,22 @@ func libusb_error(name string, code int) error {
 
 //-----------------------------------------------------------------------------
 
-// TODO: implement context parameter
+type Context *C.struct_libusb_context
 
-func Init() error {
-	rc := int(C.libusb_init(nil))
+func Init(ctx *Context) error {
+	rc := int(C.libusb_init((**C.struct_libusb_context)(ctx)))
 	if rc != LIBUSB_SUCCESS {
 		return libusb_error("libusb_init", rc)
 	}
 	return nil
 }
 
-func Exit() {
-	C.libusb_exit(nil)
+func Exit(ctx Context) {
+	C.libusb_exit(ctx)
 }
 
-func Set_Debug(level int) {
-	C.libusb_set_debug(nil, C.int(level))
+func Set_Debug(ctx Context, level int) {
+	C.libusb_set_debug(ctx, C.int(level))
 }
 
 func Get_Version() *Version {
