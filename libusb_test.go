@@ -49,7 +49,7 @@ func Test_Device_List(t *testing.T) {
 		if err != nil {
 			t.Error("FAIL")
 		}
-		logger.Printf("Bus %03d Device %03d: ID %04x:%04x", Get_Bus_Number(dev), Get_Device_Address(dev), dd.idVendor, dd.idProduct)
+		logger.Printf("Bus %03d Device %03d: ID %04x:%04x", Get_Bus_Number(dev), Get_Device_Address(dev), dd.IdVendor, dd.IdProduct)
 		logger.Printf("device %08x parent %08x", unsafe.Pointer(dev), unsafe.Pointer(Get_Parent(dev)))
 		logger.Printf("%v %d", path, Get_Port_Number(dev))
 	}

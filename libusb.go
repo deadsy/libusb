@@ -165,6 +165,23 @@ struct libusb_control_setup {
 
 */
 
+type Device_Descriptor struct {
+	BLength            uint8
+	BDescriptorType    uint8
+	BcdUSB             uint16
+	BDeviceClass       uint8
+	BDeviceSubClass    uint8
+	BDeviceProtocol    uint8
+	BMaxPacketSize0    uint8
+	IdVendor           uint16
+	IdProduct          uint16
+	BcdDevice          uint16
+	IManufacturer      uint8
+	IProduct           uint8
+	ISerialNumber      uint8
+	BNumConfigurations uint8
+}
+
 type Version struct {
 	major    uint16
 	minor    uint16
@@ -173,8 +190,6 @@ type Version struct {
 	rc       string
 	describe string
 }
-
-type Device_Descriptor C.struct_libusb_device_descriptor
 
 type Context *C.struct_libusb_context
 type Device *C.struct_libusb_device
@@ -344,12 +359,27 @@ func Get_Device(hdl Device_Handle) Device {
 // USB descriptors
 
 func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
-	var dd Device_Descriptor
-	rc := int(C.libusb_get_device_descriptor(dev, (*C.struct_libusb_device_descriptor)(&dd)))
+	var dd C.struct_libusb_device_descriptor
+	rc := int(C.libusb_get_device_descriptor(dev, &dd))
 	if rc != LIBUSB_SUCCESS {
 		return nil, libusb_error("libusb_get_device_descriptor", rc)
 	}
-	return &dd, nil
+	return &Device_Descriptor{
+		BLength:            uint8(dd.bLength),
+		BDescriptorType:    uint8(dd.bDescriptorType),
+		BcdUSB:             uint16(dd.bcdUSB),
+		BDeviceClass:       uint8(dd.bDeviceClass),
+		BDeviceSubClass:    uint8(dd.bDeviceSubClass),
+		BDeviceProtocol:    uint8(dd.bDeviceProtocol),
+		BMaxPacketSize0:    uint8(dd.bMaxPacketSize0),
+		IdVendor:           uint16(dd.idVendor),
+		IdProduct:          uint16(dd.idProduct),
+		BcdDevice:          uint16(dd.bcdDevice),
+		IManufacturer:      uint8(dd.iManufacturer),
+		IProduct:           uint8(dd.iProduct),
+		ISerialNumber:      uint8(dd.iSerialNumber),
+		BNumConfigurations: uint8(dd.bNumConfigurations),
+	}, nil
 }
 
 //-----------------------------------------------------------------------------
