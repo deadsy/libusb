@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"unsafe"
 )
 
 //-----------------------------------------------------------------------------
@@ -33,16 +34,27 @@ func Test_Device_List(t *testing.T) {
 	if err != nil {
 		t.Error("FAIL")
 	}
+
 	list, err := Get_Device_List(ctx)
 	if err != nil {
 		t.Error("FAIL")
 	}
-	logger.Printf("%d devices %v\n", len(list), list)
-	Free_Device_List(list, 1)
-}
 
-func Test_Version(t *testing.T) {
-	logger.Printf("%+v\n", Get_Version())
+	for _, dev := range list {
+		dd, err := Get_Device_Descriptor(dev)
+		if err != nil {
+			t.Error("FAIL")
+		}
+		path, err := Get_Port_Numbers(dev)
+		if err != nil {
+			t.Error("FAIL")
+		}
+		logger.Printf("Bus %03d Device %03d: ID %04x:%04x", Get_Bus_Number(dev), Get_Device_Address(dev), dd.idVendor, dd.idProduct)
+		logger.Printf("device %08x parent %08x", unsafe.Pointer(dev), unsafe.Pointer(Get_Parent(dev)))
+		logger.Printf("%v %d", path, Get_Port_Number(dev))
+	}
+
+	Free_Device_List(list, 1)
 }
 
 func Test_Init_Exit(t *testing.T) {

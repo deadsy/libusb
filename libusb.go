@@ -52,23 +52,6 @@ const LIBUSB_API_VERSION = C.LIBUSB_API_VERSION
 //-----------------------------------------------------------------------------
 // structures
 
-type Device_Descriptor struct {
-	bLength            uint8
-	bDescriptorType    uint8
-	bcdUSB             uint16
-	bDeviceClass       uint8
-	bDeviceSubClass    uint8
-	bDeviceProtocol    uint8
-	bMaxPacketSize0    uint8
-	idVendor           uint16
-	idProduct          uint16
-	bcdDevice          uint16
-	iManufacturer      uint8
-	iProduct           uint8
-	iSerialNumber      uint8
-	bNumConfigurations uint8
-}
-
 /*
 
 struct libusb_endpoint_descriptor {
@@ -177,11 +160,6 @@ struct libusb_control_setup {
 
 */
 
-type Context *C.struct_libusb_context
-type Device *C.struct_libusb_device
-type Device_Handle *C.struct_libusb_device_handle
-type Hotplug_Callback *C.struct_libusb_hotplug_callback
-
 type Version struct {
 	major    uint16
 	minor    uint16
@@ -190,6 +168,13 @@ type Version struct {
 	rc       string
 	describe string
 }
+
+type Device_Descriptor C.struct_libusb_device_descriptor
+
+type Context *C.struct_libusb_context
+type Device *C.struct_libusb_device
+type Device_Handle *C.struct_libusb_device_handle
+type Hotplug_Callback *C.struct_libusb_hotplug_callback
 
 //-----------------------------------------------------------------------------
 // errors
@@ -256,13 +241,9 @@ func Get_Device_List(ctx Context) ([]Device, error) {
 	if rc < 0 {
 		return nil, libusb_error("libusb_get_device_list", rc)
 	}
-	if rc == 0 {
-		// no devices
-		return nil, nil
-	}
 	// turn the c array into a slice of device pointers
 	var list []Device
-	hdr := (*reflect.SliceHeader)((unsafe.Pointer(&list)))
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&list))
 	hdr.Cap = rc
 	hdr.Len = rc
 	hdr.Data = uintptr(unsafe.Pointer(hdl))
@@ -274,6 +255,64 @@ func Free_Device_List(list []Device, unref_devices int) {
 		return
 	}
 	C.libusb_free_device_list((**C.struct_libusb_device)(&list[0]), C.int(unref_devices))
+}
+
+func Get_Bus_Number(dev Device) uint8 {
+	return uint8(C.libusb_get_bus_number(dev))
+}
+
+func Get_Port_Number(dev Device) uint8 {
+	return uint8(C.libusb_get_port_number(dev))
+}
+
+func Get_Port_Numbers(dev Device) ([]uint8, error) {
+	ports := make([]uint8, 16)
+	rc := int(C.libusb_get_port_numbers(dev, (*C.uint8_t)(&ports[0]), (C.int)(len(ports))))
+	if rc < 0 {
+		return nil, libusb_error("libusb_get_port_numbers", rc)
+	}
+	return ports[:rc], nil
+}
+
+func Get_Parent(dev Device) Device {
+	return C.libusb_get_parent(dev)
+}
+
+func Get_Device_Address(dev Device) uint8 {
+	return uint8(C.libusb_get_device_address(dev))
+}
+
+//int 	libusb_get_device_speed (libusb_device *dev)
+//int 	libusb_get_max_packet_size (libusb_device *dev, unsigned char endpoint)
+//int 	libusb_get_max_iso_packet_size (libusb_device *dev, unsigned char endpoint)
+//libusb_device * 	libusb_ref_device (libusb_device *dev)
+//void 	libusb_unref_device (libusb_device *dev)
+//int 	libusb_open (libusb_device *dev, libusb_device_handle **handle)
+//libusb_device_handle * 	libusb_open_device_with_vid_pid (libusb_context *ctx, uint16_t vendor_id, uint16_t product_id)
+//void 	libusb_close (libusb_device_handle *dev_handle)
+//libusb_device * 	libusb_get_device (libusb_device_handle *dev_handle)
+//int 	libusb_get_configuration (libusb_device_handle *dev, int *config)
+//int 	libusb_set_configuration (libusb_device_handle *dev, int configuration)
+//int 	libusb_claim_interface (libusb_device_handle *dev, int interface_number)
+//int 	libusb_release_interface (libusb_device_handle *dev, int interface_number)
+//int 	libusb_set_interface_alt_setting (libusb_device_handle *dev, int interface_number, int alternate_setting)
+//int 	libusb_clear_halt (libusb_device_handle *dev, unsigned char endpoint)
+//int 	libusb_reset_device (libusb_device_handle *dev)
+//int 	libusb_kernel_driver_active (libusb_device_handle *dev, int interface_number)
+//int 	libusb_detach_kernel_driver (libusb_device_handle *dev, int interface_number)
+//int 	libusb_attach_kernel_driver (libusb_device_handle *dev, int interface_number)
+//int 	libusb_set_auto_detach_kernel_driver (libusb_device_handle *dev, int enable)
+
+//-----------------------------------------------------------------------------
+// USB descriptors
+
+func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
+	var dd Device_Descriptor
+	rc := int(C.libusb_get_device_descriptor(dev, (*C.struct_libusb_device_descriptor)(&dd)))
+	if rc != LIBUSB_SUCCESS {
+		return nil, libusb_error("libusb_get_device_descriptor", rc)
+	}
+	return &dd, nil
 }
 
 //-----------------------------------------------------------------------------
