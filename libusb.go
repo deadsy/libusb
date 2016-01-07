@@ -47,6 +47,11 @@ const (
 	LIBUSB_ERROR_OTHER         = C.LIBUSB_ERROR_OTHER
 )
 
+const (
+	LIBUSB_ENDPOINT_IN  = C.LIBUSB_ENDPOINT_IN  // In: device-to-host.
+	LIBUSB_ENDPOINT_OUT = C.LIBUSB_ENDPOINT_OUT // Out: host-to-device.
+)
+
 const LIBUSB_API_VERSION = C.LIBUSB_API_VERSION
 
 //-----------------------------------------------------------------------------
@@ -345,6 +350,48 @@ func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
 		return nil, libusb_error("libusb_get_device_descriptor", rc)
 	}
 	return &dd, nil
+}
+
+//-----------------------------------------------------------------------------
+// Synchronous device I/O
+
+func Control_Transfer(hdl Device_Handle, bmRequestType uint8, bRequest uint8, wValue uint16, wIndex uint16, data []byte, timeout uint) ([]byte, error) {
+	//int 	libusb_control_transfer (libusb_device_handle *dev_handle, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex, unsigned char *data, uint16_t wLength, unsigned int timeout)
+	return nil, nil
+}
+
+func Bulk_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout uint) ([]byte, error) {
+	var length int
+	var transferred C.int
+	if endpoint&LIBUSB_ENDPOINT_IN != 0 {
+		// read device
+		length = cap(data)
+	} else {
+		// write device
+		length = len(data)
+	}
+	rc := int(C.libusb_bulk_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(length), &transferred, (C.uint)(timeout)))
+	if rc != LIBUSB_SUCCESS {
+		return nil, libusb_error("libusb_bulk_transfer", rc)
+	}
+	return data[:int(transferred)], nil
+}
+
+func Interrupt_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout uint) ([]byte, error) {
+	var length int
+	var transferred C.int
+	if endpoint&LIBUSB_ENDPOINT_IN != 0 {
+		// read device
+		length = cap(data)
+	} else {
+		// write device
+		length = len(data)
+	}
+	rc := int(C.libusb_interrupt_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(length), &transferred, (C.uint)(timeout)))
+	if rc != LIBUSB_SUCCESS {
+		return nil, libusb_error("libusb_interrupt_transfer", rc)
+	}
+	return data[:int(transferred)], nil
 }
 
 //-----------------------------------------------------------------------------
