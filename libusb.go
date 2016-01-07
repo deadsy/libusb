@@ -282,15 +282,47 @@ func Get_Device_Address(dev Device) uint8 {
 	return uint8(C.libusb_get_device_address(dev))
 }
 
-//int 	libusb_get_device_speed (libusb_device *dev)
-//int 	libusb_get_max_packet_size (libusb_device *dev, unsigned char endpoint)
-//int 	libusb_get_max_iso_packet_size (libusb_device *dev, unsigned char endpoint)
-//libusb_device * 	libusb_ref_device (libusb_device *dev)
-//void 	libusb_unref_device (libusb_device *dev)
-//int 	libusb_open (libusb_device *dev, libusb_device_handle **handle)
-//libusb_device_handle * 	libusb_open_device_with_vid_pid (libusb_context *ctx, uint16_t vendor_id, uint16_t product_id)
-//void 	libusb_close (libusb_device_handle *dev_handle)
-//libusb_device * 	libusb_get_device (libusb_device_handle *dev_handle)
+func Get_Device_Speed(dev Device) int {
+	return int(C.libusb_get_device_speed(dev))
+}
+
+func Get_Max_Packet_Size(dev Device, endpoint uint8) int {
+	return int(C.libusb_get_max_packet_size(dev, (C.uchar)(endpoint)))
+}
+
+func Get_Max_ISO_Packet_Size(dev Device, endpoint uint8) int {
+	return int(C.libusb_get_max_iso_packet_size(dev, (C.uchar)(endpoint)))
+}
+
+func Ref_Device(dev Device) Device {
+	return C.libusb_ref_device(dev)
+}
+
+func Unref_Device(dev Device) {
+	C.libusb_unref_device(dev)
+}
+
+func Open(dev Device) (Device_Handle, error) {
+	var hdl Device_Handle
+	rc := int(C.libusb_open(dev, (**C.struct_libusb_device_handle)(&hdl)))
+	if rc < 0 {
+		return nil, libusb_error("libusb_open", rc)
+	}
+	return hdl, nil
+}
+
+func Open_Device_With_VID_PID(ctx Context, vendor_id uint16, product_id uint16) Device_Handle {
+	return C.libusb_open_device_with_vid_pid(ctx, (C.uint16_t)(vendor_id), (C.uint16_t)(product_id))
+}
+
+func Close(hdl Device_Handle) {
+	C.libusb_close(hdl)
+}
+
+func Get_Device(hdl Device_Handle) Device {
+	return C.libusb_get_device(hdl)
+}
+
 //int 	libusb_get_configuration (libusb_device_handle *dev, int *config)
 //int 	libusb_set_configuration (libusb_device_handle *dev, int configuration)
 //int 	libusb_claim_interface (libusb_device_handle *dev, int interface_number)
