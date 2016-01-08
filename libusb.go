@@ -183,12 +183,12 @@ type Device_Descriptor struct {
 }
 
 type Version struct {
-	major    uint16
-	minor    uint16
-	micro    uint16
-	nano     uint16
-	rc       string
-	describe string
+	Major    uint16
+	Minor    uint16
+	Micro    uint16
+	Nano     uint16
+	Rc       string
+	Describe string
 }
 
 type Context *C.struct_libusb_context
@@ -212,24 +212,6 @@ func libusb_error(name string, code int) error {
 	return &libusb_error_t{
 		name: name,
 		code: code,
-	}
-}
-
-//-----------------------------------------------------------------------------
-
-func Error_Name(code int) string {
-	return C.GoString(C.libusb_error_name(C.int(code)))
-}
-
-func Get_Version() *Version {
-	ver := (*C.struct_libusb_version)(unsafe.Pointer(C.libusb_get_version()))
-	return &Version{
-		major:    uint16(ver.major),
-		minor:    uint16(ver.minor),
-		micro:    uint16(ver.micro),
-		nano:     uint16(ver.nano),
-		rc:       C.GoString(ver.rc),
-		describe: C.GoString(ver.describe),
 	}
 }
 
@@ -343,17 +325,135 @@ func Get_Device(hdl Device_Handle) Device {
 	return C.libusb_get_device(hdl)
 }
 
-//int 	libusb_get_configuration (libusb_device_handle *dev, int *config)
-//int 	libusb_set_configuration (libusb_device_handle *dev, int configuration)
-//int 	libusb_claim_interface (libusb_device_handle *dev, int interface_number)
-//int 	libusb_release_interface (libusb_device_handle *dev, int interface_number)
-//int 	libusb_set_interface_alt_setting (libusb_device_handle *dev, int interface_number, int alternate_setting)
-//int 	libusb_clear_halt (libusb_device_handle *dev, unsigned char endpoint)
-//int 	libusb_reset_device (libusb_device_handle *dev)
-//int 	libusb_kernel_driver_active (libusb_device_handle *dev, int interface_number)
-//int 	libusb_detach_kernel_driver (libusb_device_handle *dev, int interface_number)
-//int 	libusb_attach_kernel_driver (libusb_device_handle *dev, int interface_number)
-//int 	libusb_set_auto_detach_kernel_driver (libusb_device_handle *dev, int enable)
+func Get_Configuration(hdl Device_Handle) (int, error) {
+	var config C.int
+	rc := int(C.libusb_get_configuration(hdl, &config))
+	if rc < 0 {
+		return 0, libusb_error("libusb_get_configuration", rc)
+	}
+	return int(config), nil
+}
+
+func Set_Configuration(hdl Device_Handle, configuration int) error {
+	rc := int(C.libusb_set_configuration(hdl, (C.int)(configuration)))
+	if rc < 0 {
+		return libusb_error("libusb_set_configuration", rc)
+	}
+	return nil
+}
+
+func Claim_Interface(hdl Device_Handle, interface_number int) error {
+	rc := int(C.libusb_claim_interface(hdl, (C.int)(interface_number)))
+	if rc < 0 {
+		return libusb_error("libusb_claim_interface", rc)
+	}
+	return nil
+}
+
+func Release_Interface(hdl Device_Handle, interface_number int) error {
+	rc := int(C.libusb_release_interface(hdl, (C.int)(interface_number)))
+	if rc < 0 {
+		return libusb_error("libusb_release_interface", rc)
+	}
+	return nil
+}
+
+func Set_Interface_Alt_Setting(hdl Device_Handle, interface_number int, alternate_setting int) error {
+	rc := int(C.libusb_set_interface_alt_setting(hdl, (C.int)(interface_number), (C.int)(alternate_setting)))
+	if rc < 0 {
+		return libusb_error("libusb_set_interface_alt_setting", rc)
+	}
+	return nil
+}
+
+func Clear_Halt(hdl Device_Handle, endpoint uint8) error {
+	rc := int(C.libusb_clear_halt(hdl, (C.uchar)(endpoint)))
+	if rc < 0 {
+		return libusb_error("libusb_clear_halt", rc)
+	}
+	return nil
+}
+
+func Reset_Device(hdl Device_Handle) error {
+	rc := int(C.libusb_reset_device(hdl))
+	if rc < 0 {
+		return libusb_error("libusb_reset_device", rc)
+	}
+	return nil
+}
+
+func Kernel_Driver_Active(hdl Device_Handle, interface_number int) (bool, error) {
+	rc := int(C.libusb_kernel_driver_active(hdl, (C.int)(interface_number)))
+	if rc < 0 {
+		return false, libusb_error("libusb_kernel_driver_active", rc)
+	}
+	return rc != 0, nil
+}
+
+func Detach_Kernel_Driver(hdl Device_Handle, interface_number int) error {
+	rc := int(C.libusb_detach_kernel_driver(hdl, (C.int)(interface_number)))
+	if rc < 0 {
+		return libusb_error("libusb_detach_kernel_driver", rc)
+	}
+	return nil
+}
+
+func Attach_Kernel_Driver(hdl Device_Handle, interface_number int) error {
+	rc := int(C.libusb_attach_kernel_driver(hdl, (C.int)(interface_number)))
+	if rc < 0 {
+		return libusb_error("libusb_attach_kernel_driver", rc)
+	}
+	return nil
+}
+
+func Set_Auto_Detach_Kernel_Driver(hdl Device_Handle, enable int) error {
+	rc := int(C.libusb_set_auto_detach_kernel_driver(hdl, (C.int)(enable)))
+	if rc < 0 {
+		return libusb_error("libusb_set_auto_detach_kernel_driver", rc)
+	}
+	return nil
+}
+
+//-----------------------------------------------------------------------------
+// Miscellaneous
+
+func Has_Capability(capability uint32) bool {
+	rc := int(C.libusb_has_capability((C.uint32_t)(capability)))
+	return rc != 0
+}
+
+func Error_Name(code int) string {
+	return C.GoString(C.libusb_error_name(C.int(code)))
+}
+
+func Get_Version() *Version {
+	ver := (*C.struct_libusb_version)(unsafe.Pointer(C.libusb_get_version()))
+	return &Version{
+		Major:    uint16(ver.major),
+		Minor:    uint16(ver.minor),
+		Micro:    uint16(ver.micro),
+		Nano:     uint16(ver.nano),
+		Rc:       C.GoString(ver.rc),
+		Describe: C.GoString(ver.describe),
+	}
+}
+
+func CPU_To_LE16(x uint16) uint16 {
+	return uint16(C.libusb_cpu_to_le16((C.uint16_t)(x)))
+}
+
+func Setlocale(locale string) error {
+	cstr := C.CString(locale)
+	rc := int(C.libusb_setlocale(cstr))
+	if rc < 0 {
+		return libusb_error("libusb_setlocale", rc)
+	}
+	return nil
+}
+
+func Strerror(errcode int) string {
+	return C.GoString(C.libusb_strerror(int32(errcode)))
+}
 
 //-----------------------------------------------------------------------------
 // USB descriptors
@@ -381,6 +481,75 @@ func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
 		BNumConfigurations: uint8(dd.bNumConfigurations),
 	}, nil
 }
+
+// int 	libusb_get_active_config_descriptor (libusb_device *dev, struct libusb_config_descriptor **config)
+// int 	libusb_get_config_descriptor (libusb_device *dev, uint8_t config_index, struct libusb_config_descriptor **config)
+// int 	libusb_get_config_descriptor_by_value (libusb_device *dev, uint8_t bConfigurationValue, struct libusb_config_descriptor **config)
+// void 	libusb_free_config_descriptor (struct libusb_config_descriptor *config)
+// int 	libusb_get_ss_endpoint_companion_descriptor (struct libusb_context *ctx, const struct libusb_endpoint_descriptor *endpoint, struct libusb_ss_endpoint_companion_descriptor **ep_comp)
+// void 	libusb_free_ss_endpoint_companion_descriptor (struct libusb_ss_endpoint_companion_descriptor *ep_comp)
+// int 	libusb_get_bos_descriptor (libusb_device_handle *handle, struct libusb_bos_descriptor **bos)
+// void 	libusb_free_bos_descriptor (struct libusb_bos_descriptor *bos)
+// int 	libusb_get_usb_2_0_extension_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_usb_2_0_extension_descriptor **usb_2_0_extension)
+// void 	libusb_free_usb_2_0_extension_descriptor (struct libusb_usb_2_0_extension_descriptor *usb_2_0_extension)
+// int 	libusb_get_ss_usb_device_capability_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_ss_usb_device_capability_descriptor **ss_usb_device_cap)
+// void 	libusb_free_ss_usb_device_capability_descriptor (struct libusb_ss_usb_device_capability_descriptor *ss_usb_device_cap)
+// int 	libusb_get_container_id_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_container_id_descriptor **container_id)
+// void 	libusb_free_container_id_descriptor (struct libusb_container_id_descriptor *container_id)
+// int 	libusb_get_string_descriptor_ascii (libusb_device_handle *dev, uint8_t desc_index, unsigned char *data, int length)
+// static int 	libusb_get_descriptor (libusb_device_handle *dev, uint8_t desc_type, uint8_t desc_index, unsigned char *data, int length)
+// static int 	libusb_get_string_descriptor (libusb_device_handle *dev, uint8_t desc_index, uint16_t langid, unsigned char *data, int length)
+
+//-----------------------------------------------------------------------------
+// Device hotplug event notification
+
+//int 	libusb_hotplug_register_callback (libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vendor_id, int product_id, int dev_class, libusb_hotplug_callback_fn cb_fn, void *user_data, libusb_hotplug_callback_handle *handle)
+//void 	libusb_hotplug_deregister_callback (libusb_context *ctx, libusb_hotplug_callback_handle handle)
+
+//-----------------------------------------------------------------------------
+//Asynchronous device I/O
+
+// int 	libusb_alloc_streams (libusb_device_handle *dev, uint32_t num_streams, unsigned char *endpoints, int num_endpoints)
+// int 	libusb_free_streams (libusb_device_handle *dev, unsigned char *endpoints, int num_endpoints)
+// struct libusb_transfer * 	libusb_alloc_transfer (int iso_packets)
+// void 	libusb_free_transfer (struct libusb_transfer *transfer)
+// int 	libusb_submit_transfer (struct libusb_transfer *transfer)
+// int 	libusb_cancel_transfer (struct libusb_transfer *transfer)
+// void 	libusb_transfer_set_stream_id (struct libusb_transfer *transfer, uint32_t stream_id)
+// uint32_t 	libusb_transfer_get_stream_id (struct libusb_transfer *transfer)
+// static unsigned char * 	libusb_control_transfer_get_data (struct libusb_transfer *transfer)
+// static struct libusb_control_setup * 	libusb_control_transfer_get_setup (struct libusb_transfer *transfer)
+// static void 	libusb_fill_control_setup (unsigned char *buffer, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex, uint16_t wLength)
+// static void 	libusb_fill_control_transfer (struct libusb_transfer *transfer, libusb_device_handle *dev_handle, unsigned char *buffer, libusb_transfer_cb_fn callback, void *user_data, unsigned int timeout)
+// static void 	libusb_fill_bulk_transfer (struct libusb_transfer *transfer, libusb_device_handle *dev_handle, unsigned char endpoint, unsigned char *buffer, int length, libusb_transfer_cb_fn callback, void *user_data, unsigned int timeout)
+// static void 	libusb_fill_bulk_stream_transfer (struct libusb_transfer *transfer, libusb_device_handle *dev_handle, unsigned char endpoint, uint32_t stream_id, unsigned char *buffer, int length, libusb_transfer_cb_fn callback, void *user_data, unsigned int timeout)
+// static void 	libusb_fill_interrupt_transfer (struct libusb_transfer *transfer, libusb_device_handle *dev_handle, unsigned char endpoint, unsigned char *buffer, int length, libusb_transfer_cb_fn callback, void *user_data, unsigned int timeout)
+// static void 	libusb_fill_iso_transfer (struct libusb_transfer *transfer, libusb_device_handle *dev_handle, unsigned char endpoint, unsigned char *buffer, int length, int num_iso_packets, libusb_transfer_cb_fn callback, void *user_data, unsigned int timeout)
+// static void 	libusb_set_iso_packet_lengths (struct libusb_transfer *transfer, unsigned int length)
+// static unsigned char * 	libusb_get_iso_packet_buffer (struct libusb_transfer *transfer, unsigned int packet)
+// static unsigned char * 	libusb_get_iso_packet_buffer_simple (struct libusb_transfer *transfer, unsigned int packet)
+
+//-----------------------------------------------------------------------------
+// Polling and timing
+
+// int 	libusb_try_lock_events (libusb_context *ctx)
+// void 	libusb_lock_events (libusb_context *ctx)
+// void 	libusb_unlock_events (libusb_context *ctx)
+// int 	libusb_event_handling_ok (libusb_context *ctx)
+// int 	libusb_event_handler_active (libusb_context *ctx)
+// void 	libusb_lock_event_waiters (libusb_context *ctx)
+// void 	libusb_unlock_event_waiters (libusb_context *ctx)
+// int 	libusb_wait_for_event (libusb_context *ctx, struct timeval *tv)
+// int 	libusb_handle_events_timeout_completed (libusb_context *ctx, struct timeval *tv, int *completed)
+// int 	libusb_handle_events_timeout (libusb_context *ctx, struct timeval *tv)
+// int 	libusb_handle_events (libusb_context *ctx)
+// int 	libusb_handle_events_completed (libusb_context *ctx, int *completed)
+// int 	libusb_handle_events_locked (libusb_context *ctx, struct timeval *tv)
+// int 	libusb_pollfds_handle_timeouts (libusb_context *ctx)
+// int 	libusb_get_next_timeout (libusb_context *ctx, struct timeval *tv)
+// void 	libusb_set_pollfd_notifiers (libusb_context *ctx, libusb_pollfd_added_cb added_cb, libusb_pollfd_removed_cb removed_cb, void *user_data)
+// const struct libusb_pollfd ** 	libusb_get_pollfds (libusb_context *ctx)
+// void 	libusb_free_pollfds (const struct libusb_pollfd **pollfds)
 
 //-----------------------------------------------------------------------------
 // Synchronous device I/O
