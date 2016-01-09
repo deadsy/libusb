@@ -57,40 +57,88 @@ const LIBUSB_API_VERSION = C.LIBUSB_API_VERSION
 //-----------------------------------------------------------------------------
 // structures
 
+type Endpoint_Descriptor struct {
+	BLength          uint8
+	BDescriptorType  uint8
+	BEndpointAddress uint8
+	BmAttributes     uint8
+	WMaxPacketSize   uint16
+	BInterval        uint8
+	BRefresh         uint8
+	BSynchAddress    uint8
+	Extra            []byte
+}
+
+func c2go_Endpoint_Descriptor(x *C.struct_libusb_endpoint_descriptor) *Endpoint_Descriptor {
+	c_extra := C.GoBytes(unsafe.Pointer(x.extra), x.extra_length)
+	extra := make([]byte, int(x.extra_length))
+	copy(extra, c_extra)
+	return &Endpoint_Descriptor{
+		BLength:          uint8(x.bLength),
+		BDescriptorType:  uint8(x.bDescriptorType),
+		BEndpointAddress: uint8(x.bEndpointAddress),
+		BmAttributes:     uint8(x.bmAttributes),
+		WMaxPacketSize:   uint16(x.wMaxPacketSize),
+		BInterval:        uint8(x.bInterval),
+		BRefresh:         uint8(x.bRefresh),
+		BSynchAddress:    uint8(x.bSynchAddress),
+		Extra:            extra,
+	}
+}
+
+type Interface_Descriptor struct {
+	BLength            uint8
+	BDescriptorType    uint8
+	BInterfaceNumber   uint8
+	BAlternateSetting  uint8
+	BNumEndpoints      uint8
+	BInterfaceClass    uint8
+	BInterfaceSubClass uint8
+	BInterfaceProtocol uint8
+	IInterface         uint8
+	Endpoint           *Endpoint_Descriptor
+	Extra              []byte
+}
+
+func c2go_Interface_Descriptor(x *C.struct_libusb_interface_descriptor) *Interface_Descriptor {
+	c_extra := C.GoBytes(unsafe.Pointer(x.extra), x.extra_length)
+	extra := make([]byte, int(x.extra_length))
+	copy(extra, c_extra)
+	return &Interface_Descriptor{
+		BLength:            uint8(x.bLength),
+		BDescriptorType:    uint8(x.bDescriptorType),
+		BInterfaceNumber:   uint8(x.bInterfaceNumber),
+		BAlternateSetting:  uint8(x.bAlternateSetting),
+		BNumEndpoints:      uint8(x.bNumEndpoints),
+		BInterfaceClass:    uint8(x.bInterfaceClass),
+		BInterfaceSubClass: uint8(x.bInterfaceSubClass),
+		BInterfaceProtocol: uint8(x.bInterfaceProtocol),
+		IInterface:         uint8(x.iInterface),
+		Endpoint:           c2go_Endpoint_Descriptor(x.endpoint),
+		Extra:              extra,
+	}
+}
+
+type Interface struct {
+	Altsetting []*Interface_Descriptor
+}
+
+func c2go_Interface(x *C.struct_libusb_interface) *Interface {
+	var list []*C.struct_libusb_interface_descriptor
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&list))
+	hdr.Cap = int(x.num_altsetting)
+	hdr.Len = int(x.num_altsetting)
+	hdr.Data = uintptr(unsafe.Pointer(x.altsetting))
+	altsetting := make([]*Interface_Descriptor, x.num_altsetting)
+	for i, _ := range altsetting {
+		altsetting[i] = c2go_Interface_Descriptor(list[i])
+	}
+	return &Interface{
+		Altsetting: altsetting,
+	}
+}
+
 /*
-
-struct libusb_endpoint_descriptor {
-	uint8_t  bLength;
-	uint8_t  bDescriptorType;
-	uint8_t  bEndpointAddress;
-	uint8_t  bmAttributes;
-	uint16_t wMaxPacketSize;
-	uint8_t  bInterval;
-	uint8_t  bRefresh;
-	uint8_t  bSynchAddress;
-	const unsigned char *extra;
-	int extra_length;
-};
-
-struct libusb_interface_descriptor {
-	uint8_t  bLength;
-	uint8_t  bDescriptorType;
-	uint8_t  bInterfaceNumber;
-	uint8_t  bAlternateSetting;
-	uint8_t  bNumEndpoints;
-	uint8_t  bInterfaceClass;
-	uint8_t  bInterfaceSubClass;
-	uint8_t  bInterfaceProtocol;
-	uint8_t  iInterface;
-	const struct libusb_endpoint_descriptor *endpoint;
-	const unsigned char *extra;
-	int extra_length;
-};
-
-struct libusb_interface {
-	const struct libusb_interface_descriptor *altsetting;
-	int num_altsetting;
-};
 
 struct libusb_config_descriptor {
 	uint8_t  bLength;
@@ -182,6 +230,25 @@ type Device_Descriptor struct {
 	BNumConfigurations uint8
 }
 
+func c2go_Device_Descriptor(x *C.struct_libusb_device_descriptor) *Device_Descriptor {
+	return &Device_Descriptor{
+		BLength:            uint8(x.bLength),
+		BDescriptorType:    uint8(x.bDescriptorType),
+		BcdUSB:             uint16(x.bcdUSB),
+		BDeviceClass:       uint8(x.bDeviceClass),
+		BDeviceSubClass:    uint8(x.bDeviceSubClass),
+		BDeviceProtocol:    uint8(x.bDeviceProtocol),
+		BMaxPacketSize0:    uint8(x.bMaxPacketSize0),
+		IdVendor:           uint16(x.idVendor),
+		IdProduct:          uint16(x.idProduct),
+		BcdDevice:          uint16(x.bcdDevice),
+		IManufacturer:      uint8(x.iManufacturer),
+		IProduct:           uint8(x.iProduct),
+		ISerialNumber:      uint8(x.iSerialNumber),
+		BNumConfigurations: uint8(x.bNumConfigurations),
+	}
+}
+
 type Version struct {
 	Major    uint16
 	Minor    uint16
@@ -189,6 +256,17 @@ type Version struct {
 	Nano     uint16
 	Rc       string
 	Describe string
+}
+
+func c2go_Version(x *C.struct_libusb_version) *Version {
+	return &Version{
+		Major:    uint16(x.major),
+		Minor:    uint16(x.minor),
+		Micro:    uint16(x.micro),
+		Nano:     uint16(x.nano),
+		Rc:       C.GoString(x.rc),
+		Describe: C.GoString(x.describe),
+	}
 }
 
 type Context *C.struct_libusb_context
@@ -428,14 +506,7 @@ func Error_Name(code int) string {
 
 func Get_Version() *Version {
 	ver := (*C.struct_libusb_version)(unsafe.Pointer(C.libusb_get_version()))
-	return &Version{
-		Major:    uint16(ver.major),
-		Minor:    uint16(ver.minor),
-		Micro:    uint16(ver.micro),
-		Nano:     uint16(ver.nano),
-		Rc:       C.GoString(ver.rc),
-		Describe: C.GoString(ver.describe),
-	}
+	return c2go_Version(ver)
 }
 
 func CPU_To_LE16(x uint16) uint16 {
@@ -464,38 +535,29 @@ func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
 	if rc != LIBUSB_SUCCESS {
 		return nil, libusb_error("libusb_get_device_descriptor", rc)
 	}
-	return &Device_Descriptor{
-		BLength:            uint8(dd.bLength),
-		BDescriptorType:    uint8(dd.bDescriptorType),
-		BcdUSB:             uint16(dd.bcdUSB),
-		BDeviceClass:       uint8(dd.bDeviceClass),
-		BDeviceSubClass:    uint8(dd.bDeviceSubClass),
-		BDeviceProtocol:    uint8(dd.bDeviceProtocol),
-		BMaxPacketSize0:    uint8(dd.bMaxPacketSize0),
-		IdVendor:           uint16(dd.idVendor),
-		IdProduct:          uint16(dd.idProduct),
-		BcdDevice:          uint16(dd.bcdDevice),
-		IManufacturer:      uint8(dd.iManufacturer),
-		IProduct:           uint8(dd.iProduct),
-		ISerialNumber:      uint8(dd.iSerialNumber),
-		BNumConfigurations: uint8(dd.bNumConfigurations),
-	}, nil
+	return c2go_Device_Descriptor(&dd), nil
 }
 
 // int 	libusb_get_active_config_descriptor (libusb_device *dev, struct libusb_config_descriptor **config)
 // int 	libusb_get_config_descriptor (libusb_device *dev, uint8_t config_index, struct libusb_config_descriptor **config)
 // int 	libusb_get_config_descriptor_by_value (libusb_device *dev, uint8_t bConfigurationValue, struct libusb_config_descriptor **config)
 // void 	libusb_free_config_descriptor (struct libusb_config_descriptor *config)
+
 // int 	libusb_get_ss_endpoint_companion_descriptor (struct libusb_context *ctx, const struct libusb_endpoint_descriptor *endpoint, struct libusb_ss_endpoint_companion_descriptor **ep_comp)
 // void 	libusb_free_ss_endpoint_companion_descriptor (struct libusb_ss_endpoint_companion_descriptor *ep_comp)
+
 // int 	libusb_get_bos_descriptor (libusb_device_handle *handle, struct libusb_bos_descriptor **bos)
 // void 	libusb_free_bos_descriptor (struct libusb_bos_descriptor *bos)
+
 // int 	libusb_get_usb_2_0_extension_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_usb_2_0_extension_descriptor **usb_2_0_extension)
 // void 	libusb_free_usb_2_0_extension_descriptor (struct libusb_usb_2_0_extension_descriptor *usb_2_0_extension)
+
 // int 	libusb_get_ss_usb_device_capability_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_ss_usb_device_capability_descriptor **ss_usb_device_cap)
 // void 	libusb_free_ss_usb_device_capability_descriptor (struct libusb_ss_usb_device_capability_descriptor *ss_usb_device_cap)
+
 // int 	libusb_get_container_id_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_container_id_descriptor **container_id)
 // void 	libusb_free_container_id_descriptor (struct libusb_container_id_descriptor *container_id)
+
 // int 	libusb_get_string_descriptor_ascii (libusb_device_handle *dev, uint8_t desc_index, unsigned char *data, int length)
 // static int 	libusb_get_descriptor (libusb_device_handle *dev, uint8_t desc_type, uint8_t desc_index, unsigned char *data, int length)
 // static int 	libusb_get_string_descriptor (libusb_device_handle *dev, uint8_t desc_index, uint16_t langid, unsigned char *data, int length)
@@ -555,8 +617,20 @@ func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
 // Synchronous device I/O
 
 func Control_Transfer(hdl Device_Handle, bmRequestType uint8, bRequest uint8, wValue uint16, wIndex uint16, data []byte, timeout uint) ([]byte, error) {
-	//int 	libusb_control_transfer (libusb_device_handle *dev_handle, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex, unsigned char *data, uint16_t wLength, unsigned int timeout)
-	return nil, nil
+	var length int
+	if bmRequestType&LIBUSB_ENDPOINT_IN != 0 {
+		// read device
+		length = cap(data)
+	} else {
+		// write device
+		length = len(data)
+	}
+	rc := int(C.libusb_control_transfer(hdl, (C.uint8_t)(bmRequestType), (C.uint8_t)(bRequest), (C.uint16_t)(wValue), (C.uint16_t)(wIndex),
+		(*C.uchar)(&data[0]), (C.uint16_t)(length), (C.uint)(timeout)))
+	if rc < 0 {
+		return nil, libusb_error("libusb_control_transfer", rc)
+	}
+	return data[:rc], nil
 }
 
 func Bulk_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout uint) ([]byte, error) {
