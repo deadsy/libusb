@@ -45,7 +45,8 @@ func Test_Device_List(t *testing.T) {
 		if err != nil {
 			t.Error("FAIL")
 		}
-		path, err := Get_Port_Numbers(dev)
+		path := make([]byte, 8)
+		path, err = Get_Port_Numbers(dev, path)
 		if err != nil {
 			t.Error("FAIL")
 		}

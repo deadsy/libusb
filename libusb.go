@@ -11,6 +11,17 @@ package libusb
 /*
 #cgo LDFLAGS: -lusb-1.0
 #include <libusb-1.0/libusb.h>
+
+// cgo has trouble seeing x.dev_capability_data because it is a trailing []/[0] field
+static uint8_t *dev_capability_data_ptr(struct libusb_bos_dev_capability_descriptor *x) {
+  return &x->dev_capability_data[0];
+}
+
+// cgo has trouble seeing x.dev_capability because it is a trailing []/[0] field
+static struct libusb_bos_dev_capability_descriptor **dev_capability_ptr(struct libusb_bos_descriptor *x) {
+  return &x->dev_capability[0];
+}
+
 */
 import "C"
 
@@ -21,6 +32,74 @@ import (
 )
 
 //-----------------------------------------------------------------------------
+
+const (
+	LIBUSB_CLASS_PER_INTERFACE       = C.LIBUSB_CLASS_PER_INTERFACE
+	LIBUSB_CLASS_AUDIO               = C.LIBUSB_CLASS_AUDIO
+	LIBUSB_CLASS_COMM                = C.LIBUSB_CLASS_COMM
+	LIBUSB_CLASS_HID                 = C.LIBUSB_CLASS_HID
+	LIBUSB_CLASS_PHYSICAL            = C.LIBUSB_CLASS_PHYSICAL
+	LIBUSB_CLASS_PRINTER             = C.LIBUSB_CLASS_PRINTER
+	LIBUSB_CLASS_PTP                 = C.LIBUSB_CLASS_PTP
+	LIBUSB_CLASS_IMAGE               = C.LIBUSB_CLASS_IMAGE
+	LIBUSB_CLASS_MASS_STORAGE        = C.LIBUSB_CLASS_MASS_STORAGE
+	LIBUSB_CLASS_HUB                 = C.LIBUSB_CLASS_HUB
+	LIBUSB_CLASS_DATA                = C.LIBUSB_CLASS_DATA
+	LIBUSB_CLASS_SMART_CARD          = C.LIBUSB_CLASS_SMART_CARD
+	LIBUSB_CLASS_CONTENT_SECURITY    = C.LIBUSB_CLASS_CONTENT_SECURITY
+	LIBUSB_CLASS_VIDEO               = C.LIBUSB_CLASS_VIDEO
+	LIBUSB_CLASS_PERSONAL_HEALTHCARE = C.LIBUSB_CLASS_PERSONAL_HEALTHCARE
+	LIBUSB_CLASS_DIAGNOSTIC_DEVICE   = C.LIBUSB_CLASS_DIAGNOSTIC_DEVICE
+	LIBUSB_CLASS_WIRELESS            = C.LIBUSB_CLASS_WIRELESS
+	LIBUSB_CLASS_APPLICATION         = C.LIBUSB_CLASS_APPLICATION
+	LIBUSB_CLASS_VENDOR_SPEC         = C.LIBUSB_CLASS_VENDOR_SPEC
+)
+
+const (
+	LIBUSB_DT_DEVICE                = C.LIBUSB_DT_DEVICE
+	LIBUSB_DT_CONFIG                = C.LIBUSB_DT_CONFIG
+	LIBUSB_DT_STRING                = C.LIBUSB_DT_STRING
+	LIBUSB_DT_INTERFACE             = C.LIBUSB_DT_INTERFACE
+	LIBUSB_DT_ENDPOINT              = C.LIBUSB_DT_ENDPOINT
+	LIBUSB_DT_BOS                   = C.LIBUSB_DT_BOS
+	LIBUSB_DT_DEVICE_CAPABILITY     = C.LIBUSB_DT_DEVICE_CAPABILITY
+	LIBUSB_DT_HID                   = C.LIBUSB_DT_HID
+	LIBUSB_DT_REPORT                = C.LIBUSB_DT_REPORT
+	LIBUSB_DT_PHYSICAL              = C.LIBUSB_DT_PHYSICAL
+	LIBUSB_DT_HUB                   = C.LIBUSB_DT_HUB
+	LIBUSB_DT_SUPERSPEED_HUB        = C.LIBUSB_DT_SUPERSPEED_HUB
+	LIBUSB_DT_SS_ENDPOINT_COMPANION = C.LIBUSB_DT_SS_ENDPOINT_COMPANION
+)
+
+const (
+	LIBUSB_REQUEST_TYPE_STANDARD = C.LIBUSB_REQUEST_TYPE_STANDARD
+	LIBUSB_REQUEST_TYPE_CLASS    = C.LIBUSB_REQUEST_TYPE_CLASS
+	LIBUSB_REQUEST_TYPE_VENDOR   = C.LIBUSB_REQUEST_TYPE_VENDOR
+	LIBUSB_REQUEST_TYPE_RESERVED = C.LIBUSB_REQUEST_TYPE_RESERVED
+)
+
+const (
+	LIBUSB_REQUEST_GET_STATUS        = C.LIBUSB_REQUEST_GET_STATUS
+	LIBUSB_REQUEST_CLEAR_FEATURE     = C.LIBUSB_REQUEST_CLEAR_FEATURE
+	LIBUSB_REQUEST_SET_FEATURE       = C.LIBUSB_REQUEST_SET_FEATURE
+	LIBUSB_REQUEST_SET_ADDRESS       = C.LIBUSB_REQUEST_SET_ADDRESS
+	LIBUSB_REQUEST_GET_DESCRIPTOR    = C.LIBUSB_REQUEST_GET_DESCRIPTOR
+	LIBUSB_REQUEST_SET_DESCRIPTOR    = C.LIBUSB_REQUEST_SET_DESCRIPTOR
+	LIBUSB_REQUEST_GET_CONFIGURATION = C.LIBUSB_REQUEST_GET_CONFIGURATION
+	LIBUSB_REQUEST_SET_CONFIGURATION = C.LIBUSB_REQUEST_SET_CONFIGURATION
+	LIBUSB_REQUEST_GET_INTERFACE     = C.LIBUSB_REQUEST_GET_INTERFACE
+	LIBUSB_REQUEST_SET_INTERFACE     = C.LIBUSB_REQUEST_SET_INTERFACE
+	LIBUSB_REQUEST_SYNCH_FRAME       = C.LIBUSB_REQUEST_SYNCH_FRAME
+	LIBUSB_REQUEST_SET_SEL           = C.LIBUSB_REQUEST_SET_SEL
+	LIBUSB_SET_ISOCH_DELAY           = C.LIBUSB_SET_ISOCH_DELAY
+)
+
+const (
+	LIBUSB_RECIPIENT_DEVICE    = C.LIBUSB_RECIPIENT_DEVICE
+	LIBUSB_RECIPIENT_INTERFACE = C.LIBUSB_RECIPIENT_INTERFACE
+	LIBUSB_RECIPIENT_ENDPOINT  = C.LIBUSB_RECIPIENT_ENDPOINT
+	LIBUSB_RECIPIENT_OTHER     = C.LIBUSB_RECIPIENT_OTHER
+)
 
 const (
 	LIBUSB_LOG_LEVEL_NONE    = C.LIBUSB_LOG_LEVEL_NONE
@@ -70,9 +149,6 @@ type Endpoint_Descriptor struct {
 }
 
 func c2go_Endpoint_Descriptor(x *C.struct_libusb_endpoint_descriptor) *Endpoint_Descriptor {
-	c_extra := C.GoBytes(unsafe.Pointer(x.extra), x.extra_length)
-	extra := make([]byte, int(x.extra_length))
-	copy(extra, c_extra)
 	return &Endpoint_Descriptor{
 		BLength:          uint8(x.bLength),
 		BDescriptorType:  uint8(x.bDescriptorType),
@@ -82,7 +158,7 @@ func c2go_Endpoint_Descriptor(x *C.struct_libusb_endpoint_descriptor) *Endpoint_
 		BInterval:        uint8(x.bInterval),
 		BRefresh:         uint8(x.bRefresh),
 		BSynchAddress:    uint8(x.bSynchAddress),
-		Extra:            extra,
+		Extra:            C.GoBytes(unsafe.Pointer(x.extra), x.extra_length),
 	}
 }
 
@@ -101,9 +177,6 @@ type Interface_Descriptor struct {
 }
 
 func c2go_Interface_Descriptor(x *C.struct_libusb_interface_descriptor) *Interface_Descriptor {
-	c_extra := C.GoBytes(unsafe.Pointer(x.extra), x.extra_length)
-	extra := make([]byte, int(x.extra_length))
-	copy(extra, c_extra)
 	return &Interface_Descriptor{
 		BLength:            uint8(x.bLength),
 		BDescriptorType:    uint8(x.bDescriptorType),
@@ -115,7 +188,7 @@ func c2go_Interface_Descriptor(x *C.struct_libusb_interface_descriptor) *Interfa
 		BInterfaceProtocol: uint8(x.bInterfaceProtocol),
 		IInterface:         uint8(x.iInterface),
 		Endpoint:           c2go_Endpoint_Descriptor(x.endpoint),
-		Extra:              extra,
+		Extra:              C.GoBytes(unsafe.Pointer(x.extra), x.extra_length),
 	}
 }
 
@@ -162,20 +235,52 @@ struct libusb_ss_endpoint_companion_descriptor {
 	uint16_t wBytesPerInterval;
 };
 
-struct libusb_bos_dev_capability_descriptor {
-	uint8_t bLength;
-	uint8_t bDescriptorType;
-	uint8_t bDevCapabilityType;
-	uint8_t dev_capability_data
-};
+*/
 
-struct libusb_bos_descriptor {
-	uint8_t  bLength;
-	uint8_t  bDescriptorType;
-	uint16_t wTotalLength;
-	uint8_t  bNumDeviceCaps;
-	struct libusb_bos_dev_capability_descriptor *dev_capability
-};
+type BOS_Dev_Capability_Descriptor struct {
+	BLength             uint8
+	BDescriptorType     uint8
+	BDevCapabilityType  uint8
+	Dev_capability_data []byte
+}
+
+func c2go_BOS_Dev_Capability_Descriptor(x *C.struct_libusb_bos_dev_capability_descriptor) *BOS_Dev_Capability_Descriptor {
+	return &BOS_Dev_Capability_Descriptor{
+		BLength:             uint8(x.bLength),
+		BDescriptorType:     uint8(x.bDescriptorType),
+		BDevCapabilityType:  uint8(x.bDevCapabilityType),
+		Dev_capability_data: C.GoBytes(unsafe.Pointer(C.dev_capability_data_ptr(x)), C.int(x.bLength-3)),
+	}
+}
+
+type BOS_Descriptor struct {
+	ptr             *C.struct_libusb_bos_descriptor
+	BLength         uint8
+	BDescriptorType uint8
+	WTotalLength    uint16
+	Dev_capability  []*BOS_Dev_Capability_Descriptor
+}
+
+func c2go_BOS_Descriptor(x *C.struct_libusb_bos_descriptor) *BOS_Descriptor {
+	var list []*C.struct_libusb_bos_dev_capability_descriptor
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&list))
+	hdr.Cap = int(x.bNumDeviceCaps)
+	hdr.Len = int(x.bNumDeviceCaps)
+	hdr.Data = uintptr(unsafe.Pointer(C.dev_capability_ptr(x)))
+	dev_capability := make([]*BOS_Dev_Capability_Descriptor, x.bNumDeviceCaps)
+	for i, _ := range dev_capability {
+		dev_capability[i] = c2go_BOS_Dev_Capability_Descriptor(list[i])
+	}
+	return &BOS_Descriptor{
+		ptr:             x,
+		BLength:         uint8(x.bLength),
+		BDescriptorType: uint8(x.bDescriptorType),
+		WTotalLength:    uint16(x.wTotalLength),
+		Dev_capability:  dev_capability,
+	}
+}
+
+/*
 
 struct libusb_usb_2_0_extension_descriptor {
 	uint8_t  bLength;
@@ -345,8 +450,7 @@ func Get_Port_Number(dev Device) uint8 {
 	return uint8(C.libusb_get_port_number(dev))
 }
 
-func Get_Port_Numbers(dev Device) ([]uint8, error) {
-	ports := make([]uint8, 16)
+func Get_Port_Numbers(dev Device, ports []byte) ([]byte, error) {
 	rc := int(C.libusb_get_port_numbers(dev, (*C.uint8_t)(&ports[0]), (C.int)(len(ports))))
 	if rc < 0 {
 		return nil, libusb_error("libusb_get_port_numbers", rc)
@@ -546,8 +650,18 @@ func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
 // int 	libusb_get_ss_endpoint_companion_descriptor (struct libusb_context *ctx, const struct libusb_endpoint_descriptor *endpoint, struct libusb_ss_endpoint_companion_descriptor **ep_comp)
 // void 	libusb_free_ss_endpoint_companion_descriptor (struct libusb_ss_endpoint_companion_descriptor *ep_comp)
 
-// int 	libusb_get_bos_descriptor (libusb_device_handle *handle, struct libusb_bos_descriptor **bos)
-// void 	libusb_free_bos_descriptor (struct libusb_bos_descriptor *bos)
+func Get_BOS_Descriptor(hdl Device_Handle) (*BOS_Descriptor, error) {
+	var bd *C.struct_libusb_bos_descriptor
+	rc := int(C.libusb_get_bos_descriptor(hdl, &bd))
+	if rc != 0 {
+		return nil, libusb_error("libusb_get_bos_descriptor", rc)
+	}
+	return c2go_BOS_Descriptor(bd), nil
+}
+
+func Free_BOS_Descriptor(bos *BOS_Descriptor) {
+	C.libusb_free_bos_descriptor(bos.ptr)
+}
 
 // int 	libusb_get_usb_2_0_extension_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_usb_2_0_extension_descriptor **usb_2_0_extension)
 // void 	libusb_free_usb_2_0_extension_descriptor (struct libusb_usb_2_0_extension_descriptor *usb_2_0_extension)
