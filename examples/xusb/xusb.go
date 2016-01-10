@@ -19,9 +19,81 @@ const (
 
 var test_mode int
 
+//-----------------------------------------------------------------------------
+
+// HID Class-Specific Requests values. See section 7.2 of the HID specifications
+const HID_GET_REPORT = 0x01
+const HID_GET_IDLE = 0x02
+const HID_GET_PROTOCOL = 0x03
+const HID_SET_REPORT = 0x09
+const HID_SET_IDLE = 0x0A
+const HID_SET_PROTOCOL = 0x0B
+const HID_REPORT_TYPE_INPUT = 0x01
+const HID_REPORT_TYPE_OUTPUT = 0x02
+const HID_REPORT_TYPE_FEATURE = 0x03
+
+/*
+
+func get_hid_record_size(hid_report_descriptor []byte, record_type int) int {
+{
+	//uint8_t i, j = 0;
+	//uint8_t offset;
+	//int record_size[3] = {0, 0, 0};
+	//int nb_bits = 0, nb_items = 0;
+	//bool found_record_marker;
+
+	found_record_marker := false
+	for i := hid_report_descriptor[0]+1; i < len(hid_report_descriptor); i += offset {
+		offset = (hid_report_descriptor[i]&0x03) + 1
+		if offset == 4 {
+			offset = 5
+    }
+		switch hid_report_descriptor[i] & 0xFC {
+		case 0x74:	// bitsize
+			nb_bits = hid_report_descriptor[i+1];
+
+		case 0x94:	// count
+			nb_items = 0
+			for j:=1; j<offset; j++ {
+				nb_items = ((uint32_t)hid_report_descriptor[i+j]) << (8*(j-1))
+			}
+
+		case 0x80:	// input
+			found_record_marker = true
+			j = 0
+
+		case 0x90:	// output
+			found_record_marker = true
+			j = 1
+
+		case 0xb0:	// feature
+			found_record_marker = true
+			j = 2
+
+		case 0xC0:	// end of collection
+			nb_items = 0
+			nb_bits = 0
+
+		default:
+			continue
+		}
+		if found_record_marker {
+			found_record_marker = false
+			record_size[j] += nb_items*nb_bits
+		}
+	}
+
+	if (record_type < HID_REPORT_TYPE_INPUT) || (record_type > HID_REPORT_TYPE_FEATURE) {
+		return 0
+	}
+	return record_size[record_type - HID_REPORT_TYPE_INPUT]+7)/8
+}
+
+*/
+
 func test_hid(handle libusb.Device_Handle, endpoint_in uint8) int {
 	//int r, size, descriptor_size;
-	hid_report_descriptor := make([]byte, 0, 256)
+	hid_report_descriptor := make([]byte, 256)
 	//uint8_t *report_buffer;
 	//FILE *fd;
 
@@ -35,15 +107,6 @@ func test_hid(handle libusb.Device_Handle, endpoint_in uint8) int {
 	fmt.Printf("%s\n", hex.Dump(hid_report_descriptor))
 
 	/*
-
-		if ((binary_dump) && ((fd = fopen(binary_name, "w")) != NULL)) {
-			if (fwrite(hid_report_descriptor, 1, descriptor_size, fd) != descriptor_size) {
-				printf("   Error writing descriptor to file\n");
-			}
-			fclose(fd);
-		}
-
-
 
 		size = get_hid_record_size(hid_report_descriptor, descriptor_size, HID_REPORT_TYPE_FEATURE);
 		if (size <= 0) {
@@ -122,6 +185,8 @@ func test_hid(handle libusb.Device_Handle, endpoint_in uint8) int {
 	return 0
 }
 
+//-----------------------------------------------------------------------------
+
 func print_device_cap(dev_cap *libusb.BOS_Dev_Capability_Descriptor) {
 	/*
 		switch(dev_cap->bDevCapabilityType) {
@@ -164,12 +229,6 @@ func print_device_cap(dev_cap *libusb.BOS_Dev_Capability_Descriptor) {
 
 func test_device(vid uint16, pid uint16) int {
 	port_path := make([]byte, 8)
-	//struct libusb_config_descriptor *conf_desc;
-	//const struct libusb_endpoint_descriptor *endpoint;
-	//int i, j, k, r;
-	//int iface, nb_ifaces, first_iface = -1;
-	//struct libusb_device_descriptor dev_desc;
-
 	speed_name := [5]string{
 		"Unknown",
 		"1.5 Mbit/s (USB LowSpeed)",
@@ -178,7 +237,6 @@ func test_device(vid uint16, pid uint16) int {
 		"5000 Mbit/s (USB SuperSpeed)",
 	}
 
-	//char string[128];
 	string_index := make([]byte, 3) // indexes of the string descriptors
 	// default IN and OUT endpoints
 	var endpoint_in uint8
@@ -310,25 +368,32 @@ func test_device(vid uint16, pid uint16) int {
 		}
 	}
 
-	/*
-		printf("\nReading string descriptors:\n");
-		for (i=0; i<3; i++) {
-			if (string_index[i] == 0) {
-				continue;
-			}
-			if (libusb_get_string_descriptor_ascii(handle, string_index[i], (unsigned char*)string, 128) >= 0) {
-				printf("   String (0x%02X): \"%s\"\n", string_index[i], string);
-			}
-		}
-		// Read the OS String Descriptor
-		if (libusb_get_string_descriptor_ascii(handle, 0xEE, (unsigned char*)string, 128) >= 0) {
-			printf("   String (0x%02X): \"%s\"\n", 0xEE, string);
-			// If this is a Microsoft OS String Descriptor,
-			// attempt to read the WinUSB extended Feature Descriptors
-			if (strncmp(string, "MSFT100", 7) == 0)
-				read_ms_winsub_feature_descriptors(handle, string[7], first_iface);
-		}
+	str := make([]byte, 128)
 
+	fmt.Printf("\nReading string descriptors:\n")
+	for i := 0; i < 3; i++ {
+		if string_index[i] == 0 {
+			continue
+		}
+		str, err := libusb.Get_String_Descriptor_ASCII(handle, string_index[i], str)
+		if err == nil {
+			fmt.Printf("   String (0x%02X): \"%s\"\n", string_index[i], string(str))
+		}
+	}
+
+	// Read the OS String Descriptor
+	str, err = libusb.Get_String_Descriptor_ASCII(handle, 0xEE, str)
+	if err == nil {
+		fmt.Printf("   String (0x%02X): \"%s\"\n", 0xEE, string(str))
+		// If this is a Microsoft OS String Descriptor,
+		// attempt to read the WinUSB extended Feature Descriptors
+		//if (strncmp(string, "MSFT100", 7) == 0)
+		//	read_ms_winsub_feature_descriptors(handle, string[7], first_iface);
+	}
+
+	test_hid(handle, endpoint_in)
+
+	/*
 		switch(test_mode) {
 		case USE_PS3:
 			CALL_CHECK(display_ps3_status(handle));
@@ -364,6 +429,8 @@ func test_device(vid uint16, pid uint16) int {
 	return 0
 }
 
+//-----------------------------------------------------------------------------
+
 func main() {
 
 	version := libusb.Get_Version()
@@ -374,8 +441,11 @@ func main() {
 		os.Exit(-1)
 	}
 
-	test_device(0x944, 0x115)
+	test_device(0x045e, 0x00a4)
+	//test_device(0x944, 0x115)
 
 	libusb.Exit(nil)
 	os.Exit(0)
 }
+
+//-----------------------------------------------------------------------------

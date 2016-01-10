@@ -793,7 +793,14 @@ func Free_SS_USB_Device_Capability_Descriptor(ss_usb_device_cap *SS_USB_Device_C
 // int 	libusb_get_container_id_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_container_id_descriptor **container_id)
 // void 	libusb_free_container_id_descriptor (struct libusb_container_id_descriptor *container_id)
 
-// int 	libusb_get_string_descriptor_ascii (libusb_device_handle *dev, uint8_t desc_index, unsigned char *data, int length)
+func Get_String_Descriptor_ASCII(dev Device_Handle, desc_index uint8, data []byte) ([]byte, error) {
+	rc := int(C.libusb_get_string_descriptor_ascii(dev, (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
+	if rc < 0 {
+		return nil, libusb_error("libusb_get_string_descriptor_ascii", rc)
+	}
+	return data[:rc], nil
+}
+
 // static int 	libusb_get_descriptor (libusb_device_handle *dev, uint8_t desc_type, uint8_t desc_index, unsigned char *data, int length)
 // static int 	libusb_get_string_descriptor (libusb_device_handle *dev, uint8_t desc_index, uint16_t langid, unsigned char *data, int length)
 
@@ -852,16 +859,8 @@ func Free_SS_USB_Device_Capability_Descriptor(ss_usb_device_cap *SS_USB_Device_C
 // Synchronous device I/O
 
 func Control_Transfer(hdl Device_Handle, bmRequestType uint8, bRequest uint8, wValue uint16, wIndex uint16, data []byte, timeout uint) ([]byte, error) {
-	var length int
-	if bmRequestType&LIBUSB_ENDPOINT_IN != 0 {
-		// read device
-		length = cap(data)
-	} else {
-		// write device
-		length = len(data)
-	}
 	rc := int(C.libusb_control_transfer(hdl, (C.uint8_t)(bmRequestType), (C.uint8_t)(bRequest), (C.uint16_t)(wValue), (C.uint16_t)(wIndex),
-		(*C.uchar)(&data[0]), (C.uint16_t)(length), (C.uint)(timeout)))
+		(*C.uchar)(&data[0]), (C.uint16_t)(len(data)), (C.uint)(timeout)))
 	if rc < 0 {
 		return nil, libusb_error("libusb_control_transfer", rc)
 	}
@@ -869,16 +868,8 @@ func Control_Transfer(hdl Device_Handle, bmRequestType uint8, bRequest uint8, wV
 }
 
 func Bulk_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout uint) ([]byte, error) {
-	var length int
 	var transferred C.int
-	if endpoint&LIBUSB_ENDPOINT_IN != 0 {
-		// read device
-		length = cap(data)
-	} else {
-		// write device
-		length = len(data)
-	}
-	rc := int(C.libusb_bulk_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(length), &transferred, (C.uint)(timeout)))
+	rc := int(C.libusb_bulk_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(len(data)), &transferred, (C.uint)(timeout)))
 	if rc != LIBUSB_SUCCESS {
 		return nil, libusb_error("libusb_bulk_transfer", rc)
 	}
@@ -886,16 +877,8 @@ func Bulk_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout uint)
 }
 
 func Interrupt_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout uint) ([]byte, error) {
-	var length int
 	var transferred C.int
-	if endpoint&LIBUSB_ENDPOINT_IN != 0 {
-		// read device
-		length = cap(data)
-	} else {
-		// write device
-		length = len(data)
-	}
-	rc := int(C.libusb_interrupt_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(length), &transferred, (C.uint)(timeout)))
+	rc := int(C.libusb_interrupt_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(len(data)), &transferred, (C.uint)(timeout)))
 	if rc != LIBUSB_SUCCESS {
 		return nil, libusb_error("libusb_interrupt_transfer", rc)
 	}
