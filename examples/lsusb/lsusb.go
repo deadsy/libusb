@@ -26,7 +26,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		path, err := libusb.Get_Port_Numbers(dev)
+		path := make([]byte, 8)
+		path, err = libusb.Get_Port_Numbers(dev, path)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -9,6 +9,16 @@ import (
 
 var extra_info bool = true
 
+const (
+	USE_GENERIC = iota
+	USE_PS3
+	USE_XBOX
+	USE_SCSI
+	USE_HID
+)
+
+var test_mode int
+
 func test_hid(handle libusb.Device_Handle, endpoint_in uint8) int {
 	//int r, size, descriptor_size;
 	hid_report_descriptor := make([]byte, 0, 256)
@@ -170,7 +180,9 @@ func test_device(vid uint16, pid uint16) int {
 
 	//char string[128];
 	string_index := make([]byte, 3) // indexes of the string descriptors
-	//uint8_t endpoint_in = 0, endpoint_out = 0;	// default IN and OUT endpoints
+	// default IN and OUT endpoints
+	var endpoint_in uint8
+	var endpoint_out uint8
 
 	fmt.Printf("Opening device %04X:%04X...\n", vid, pid)
 	handle := libusb.Open_Device_With_VID_PID(nil, vid, pid)
@@ -231,57 +243,72 @@ func test_device(vid uint16, pid uint16) int {
 		fmt.Printf("no descriptor\n")
 	}
 
-	/*
+	fmt.Printf("\nReading first configuration descriptor:\n")
+	conf_desc, err := libusb.Get_Config_Descriptor(dev, 0)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return -1
+	}
 
-		printf("\nReading first configuration descriptor:\n");
-		CALL_CHECK(libusb_get_config_descriptor(dev, 0, &conf_desc));
-		nb_ifaces = conf_desc->bNumInterfaces;
-		printf("             nb interfaces: %d\n", nb_ifaces);
-		if (nb_ifaces > 0)
-			first_iface = conf_desc->usb_interface[0].altsetting[0].bInterfaceNumber;
-		for (i=0; i<nb_ifaces; i++) {
-			printf("              interface[%d]: id = %d\n", i,
-				conf_desc->usb_interface[i].altsetting[0].bInterfaceNumber);
-			for (j=0; j<conf_desc->usb_interface[i].num_altsetting; j++) {
-				printf("interface[%d].altsetting[%d]: num endpoints = %d\n",
-					i, j, conf_desc->usb_interface[i].altsetting[j].bNumEndpoints);
-				printf("   Class.SubClass.Protocol: %02X.%02X.%02X\n",
-					conf_desc->usb_interface[i].altsetting[j].bInterfaceClass,
-					conf_desc->usb_interface[i].altsetting[j].bInterfaceSubClass,
-					conf_desc->usb_interface[i].altsetting[j].bInterfaceProtocol);
-				if ( (conf_desc->usb_interface[i].altsetting[j].bInterfaceClass == LIBUSB_CLASS_MASS_STORAGE)
-				  && ( (conf_desc->usb_interface[i].altsetting[j].bInterfaceSubClass == 0x01)
-				  || (conf_desc->usb_interface[i].altsetting[j].bInterfaceSubClass == 0x06) )
-				  && (conf_desc->usb_interface[i].altsetting[j].bInterfaceProtocol == 0x50) ) {
-					// Mass storage devices that can use basic SCSI commands
-					test_mode = USE_SCSI;
-				}
-				for (k=0; k<conf_desc->usb_interface[i].altsetting[j].bNumEndpoints; k++) {
-					struct libusb_ss_endpoint_companion_descriptor *ep_comp = NULL;
-					endpoint = &conf_desc->usb_interface[i].altsetting[j].endpoint[k];
-					printf("       endpoint[%d].address: %02X\n", k, endpoint->bEndpointAddress);
-					// Use the first interrupt or bulk IN/OUT endpoints as default for testing
-					if ((endpoint->bmAttributes & LIBUSB_TRANSFER_TYPE_MASK) & (LIBUSB_TRANSFER_TYPE_BULK | LIBUSB_TRANSFER_TYPE_INTERRUPT)) {
-						if (endpoint->bEndpointAddress & LIBUSB_ENDPOINT_IN) {
-							if (!endpoint_in)
-								endpoint_in = endpoint->bEndpointAddress;
-						} else {
-							if (!endpoint_out)
-								endpoint_out = endpoint->bEndpointAddress;
+	nb_ifaces := len(conf_desc.Interface)
+	fmt.Printf("             nb interfaces: %d\n", nb_ifaces)
+	if nb_ifaces > 0 {
+		//first_iface := conf_desc.Interface[0].Altsetting[0].BInterfaceNumber
+	}
+	for i := 0; i < nb_ifaces; i++ {
+		fmt.Printf("              interface[%d]: id = %d\n", i, conf_desc.Interface[i].Altsetting[0].BInterfaceNumber)
+		for j := 0; j < conf_desc.Interface[i].Num_altsetting; j++ {
+			fmt.Printf("interface[%d].altsetting[%d]: num endpoints = %d\n", i, j, conf_desc.Interface[i].Altsetting[j].BNumEndpoints)
+			fmt.Printf("   Class.SubClass.Protocol: %02X.%02X.%02X\n",
+				conf_desc.Interface[i].Altsetting[j].BInterfaceClass,
+				conf_desc.Interface[i].Altsetting[j].BInterfaceSubClass,
+				conf_desc.Interface[i].Altsetting[j].BInterfaceProtocol)
+			if (conf_desc.Interface[i].Altsetting[j].BInterfaceClass == libusb.LIBUSB_CLASS_MASS_STORAGE) &&
+				((conf_desc.Interface[i].Altsetting[j].BInterfaceSubClass == 0x01) ||
+					(conf_desc.Interface[i].Altsetting[j].BInterfaceSubClass == 0x06)) &&
+				(conf_desc.Interface[i].Altsetting[j].BInterfaceProtocol == 0x50) {
+				// Mass storage devices that can use basic SCSI commands
+				test_mode = USE_SCSI
+			}
+
+			for k := 0; k < int(conf_desc.Interface[i].Altsetting[j].BNumEndpoints); k++ {
+
+				endpoint := conf_desc.Interface[i].Altsetting[j].Endpoint[k]
+				fmt.Printf("       endpoint[%d].address: %02X\n", k, endpoint.BEndpointAddress)
+				// Use the first interrupt or bulk IN/OUT endpoints as default for testing
+				if (endpoint.BmAttributes&libusb.LIBUSB_TRANSFER_TYPE_MASK)&(libusb.LIBUSB_TRANSFER_TYPE_BULK|libusb.LIBUSB_TRANSFER_TYPE_INTERRUPT) != 0 {
+					if endpoint.BEndpointAddress&libusb.LIBUSB_ENDPOINT_IN != 0 {
+						if endpoint_in == 0 {
+							endpoint_in = endpoint.BEndpointAddress
+						}
+					} else {
+						if endpoint_out == 0 {
+							endpoint_out = endpoint.BEndpointAddress
 						}
 					}
-					printf("           max packet size: %04X\n", endpoint->wMaxPacketSize);
-					printf("          polling interval: %02X\n", endpoint->bInterval);
-					libusb_get_ss_endpoint_companion_descriptor(NULL, endpoint, &ep_comp);
-					if (ep_comp) {
-						printf("                 max burst: %02X   (USB 3.0)\n", ep_comp->bMaxBurst);
-						printf("        bytes per interval: %04X (USB 3.0)\n", ep_comp->wBytesPerInterval);
-						libusb_free_ss_endpoint_companion_descriptor(ep_comp);
-					}
 				}
+				fmt.Printf("           max packet size: %04X\n", endpoint.WMaxPacketSize)
+				fmt.Printf("          polling interval: %02X\n", endpoint.BInterval)
+
+				/*
+
+				             struct libusb_ss_endpoint_companion_descriptor *ep_comp = NULL;
+				   					libusb.Get_SS_Endpoint_Companion_Descriptor(NULL, endpoint, &ep_comp)
+				   					if ep_comp {
+				   						fmt.Printf("                 max burst: %02X   (USB 3.0)\n", ep_comp.BMaxBurst)
+				   						fmt.Printf("        bytes per interval: %04X (USB 3.0)\n", ep_comp.WBytesPerInterval)
+				   						libusb.Free_SS_Endpoint_Companion_Descriptor(ep_comp)
+				   					}
+
+				*/
+
 			}
+
 		}
-		libusb_free_config_descriptor(conf_desc);
+	}
+	libusb.Free_Config_Descriptor(conf_desc)
+
+	/*
 
 		libusb_set_auto_detach_kernel_driver(handle, 1);
 		for (iface = 0; iface < nb_ifaces; iface++)
