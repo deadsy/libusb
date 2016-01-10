@@ -272,7 +272,6 @@ func test_device(vid uint16, pid uint16) int {
 			}
 
 			for k := 0; k < int(conf_desc.Interface[i].Altsetting[j].BNumEndpoints); k++ {
-
 				endpoint := conf_desc.Interface[i].Altsetting[j].Endpoint[k]
 				fmt.Printf("       endpoint[%d].address: %02X\n", k, endpoint.BEndpointAddress)
 				// Use the first interrupt or bulk IN/OUT endpoints as default for testing
@@ -289,37 +288,29 @@ func test_device(vid uint16, pid uint16) int {
 				}
 				fmt.Printf("           max packet size: %04X\n", endpoint.WMaxPacketSize)
 				fmt.Printf("          polling interval: %02X\n", endpoint.BInterval)
-
-				/*
-
-				             struct libusb_ss_endpoint_companion_descriptor *ep_comp = NULL;
-				   					libusb.Get_SS_Endpoint_Companion_Descriptor(NULL, endpoint, &ep_comp)
-				   					if ep_comp {
-				   						fmt.Printf("                 max burst: %02X   (USB 3.0)\n", ep_comp.BMaxBurst)
-				   						fmt.Printf("        bytes per interval: %04X (USB 3.0)\n", ep_comp.WBytesPerInterval)
-				   						libusb.Free_SS_Endpoint_Companion_Descriptor(ep_comp)
-				   					}
-
-				*/
-
+				ep_comp, _ := libusb.Get_SS_Endpoint_Companion_Descriptor(nil, endpoint)
+				if ep_comp != nil {
+					fmt.Printf("                 max burst: %02X   (USB 3.0)\n", ep_comp.BMaxBurst)
+					fmt.Printf("        bytes per interval: %04X (USB 3.0)\n", ep_comp.WBytesPerInterval)
+					libusb.Free_SS_Endpoint_Companion_Descriptor(ep_comp)
+				}
 			}
-
 		}
 	}
 	libusb.Free_Config_Descriptor(conf_desc)
 
-	/*
+	libusb.Set_Auto_Detach_Kernel_Driver(handle, true)
+	for iface := 0; iface < nb_ifaces; iface++ {
+		fmt.Printf("\nClaiming interface %d...\n", iface)
 
-		libusb_set_auto_detach_kernel_driver(handle, 1);
-		for (iface = 0; iface < nb_ifaces; iface++)
-		{
-			printf("\nClaiming interface %d...\n", iface);
-			r = libusb_claim_interface(handle, iface);
-			if (r != LIBUSB_SUCCESS) {
-				perr("   Failed.\n");
-			}
+		err := libusb.Claim_Interface(handle, iface)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			return -1
 		}
+	}
 
+	/*
 		printf("\nReading string descriptors:\n");
 		for (i=0; i<3; i++) {
 			if (string_index[i] == 0) {
@@ -356,15 +347,17 @@ func test_device(vid uint16, pid uint16) int {
 		case USE_GENERIC:
 			break;
 		}
-
-		printf("\n");
-		for (iface = 0; iface<nb_ifaces; iface++) {
-			printf("Releasing interface %d...\n", iface);
-			libusb_release_interface(handle, iface);
-		}
-
-
 	*/
+
+	fmt.Printf("\n")
+	for iface := 0; iface < nb_ifaces; iface++ {
+		fmt.Printf("Releasing interface %d...\n", iface)
+		err := libusb.Release_Interface(handle, iface)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			return -1
+		}
+	}
 
 	fmt.Printf("Closing device...\n")
 	libusb.Close(handle)
