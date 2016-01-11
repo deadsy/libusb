@@ -2,7 +2,9 @@
 
 # libusb
 golang wrapper for libusb-1.0
+
 The API for libusb has been mapped 1-1 to equivalent go functions and types.
+
 See http://libusb.info/ for more information on the C-API
 
 ## Wrapper Status
