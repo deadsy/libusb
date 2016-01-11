@@ -342,16 +342,23 @@ func c2go_BOS_Descriptor(x *C.struct_libusb_bos_descriptor) *BOS_Descriptor {
 	}
 }
 
-/*
+type USB_2_0_Extension_Descriptor struct {
+	ptr                *C.struct_libusb_usb_2_0_extension_descriptor
+	BLength            uint8
+	BDescriptorType    uint8
+	BDevCapabilityType uint8
+	BmAttributes       uint32
+}
 
-struct libusb_usb_2_0_extension_descriptor {
-	uint8_t  bLength;
-	uint8_t  bDescriptorType;
-	uint8_t  bDevCapabilityType;
-	uint32_t  bmAttributes;
-};
-
-*/
+func c2go_USB_2_0_Extension_Descriptor(x *C.struct_libusb_usb_2_0_extension_descriptor) *USB_2_0_Extension_Descriptor {
+	return &USB_2_0_Extension_Descriptor{
+		ptr:                x,
+		BLength:            uint8(x.bLength),
+		BDescriptorType:    uint8(x.bDescriptorType),
+		BDevCapabilityType: uint8(x.bDevCapabilityType),
+		BmAttributes:       uint32(x.bmAttributes),
+	}
+}
 
 type SS_USB_Device_Capability_Descriptor struct {
 	ptr                   *C.struct_libusb_ss_usb_device_capability_descriptor
@@ -379,16 +386,27 @@ func c2go_SS_USB_Device_Capability_Descriptor(x *C.struct_libusb_ss_usb_device_c
 	}
 }
 
+type Container_ID_Descriptor struct {
+	ptr                *C.struct_libusb_container_id_descriptor
+	BLength            uint8
+	BDescriptorType    uint8
+	BDevCapabilityType uint8
+	BReserved          uint8
+	ContainerID        []byte
+}
+
+func c2go_Container_ID_Descriptor(x *C.struct_libusb_container_id_descriptor) *Container_ID_Descriptor {
+	return &Container_ID_Descriptor{
+		ptr:                x,
+		BLength:            uint8(x.bLength),
+		BDescriptorType:    uint8(x.bDescriptorType),
+		BDevCapabilityType: uint8(x.bDevCapabilityType),
+		BReserved:          uint8(x.bReserved),
+		ContainerID:        C.GoBytes(unsafe.Pointer(&x.ContainerID[0]), 16),
+	}
+}
+
 /*
-
-struct libusb_container_id_descriptor {
-	uint8_t  bLength;
-	uint8_t  bDescriptorType;
-	uint8_t  bDevCapabilityType;
-	uint8_t bReserved;
-	uint8_t  ContainerID[16];
-};
-
 struct libusb_control_setup {
 	uint8_t  bmRequestType;
 	uint8_t  bRequest;
@@ -396,7 +414,6 @@ struct libusb_control_setup {
 	uint16_t wIndex;
 	uint16_t wLength;
 };
-
 */
 
 type Device_Descriptor struct {
@@ -723,38 +740,52 @@ func Strerror(errcode int) string {
 // USB descriptors
 
 func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
-	var dd C.struct_libusb_device_descriptor
-	rc := int(C.libusb_get_device_descriptor(dev, &dd))
-	if rc != LIBUSB_SUCCESS {
+	var desc C.struct_libusb_device_descriptor
+	rc := int(C.libusb_get_device_descriptor(dev, &desc))
+	if rc != 0 {
 		return nil, libusb_error("libusb_get_device_descriptor", rc)
 	}
-	return c2go_Device_Descriptor(&dd), nil
+	return c2go_Device_Descriptor(&desc), nil
 }
 
-// int 	libusb_get_active_config_descriptor (libusb_device *dev, struct libusb_config_descriptor **config)
+func Get_Active_Config_Descriptor(dev Device) (*Config_Descriptor, error) {
+	var desc *C.struct_libusb_config_descriptor
+	rc := int(C.libusb_get_active_config_descriptor(dev, &desc))
+	if rc != 0 {
+		return nil, libusb_error("libusb_get_active_config_descriptor", rc)
+	}
+	return c2go_Config_Descriptor(desc), nil
+}
 
 func Get_Config_Descriptor(dev Device, config_index uint8) (*Config_Descriptor, error) {
-	var cd *C.struct_libusb_config_descriptor
-	rc := int(C.libusb_get_config_descriptor(dev, (C.uint8_t)(config_index), &cd))
+	var desc *C.struct_libusb_config_descriptor
+	rc := int(C.libusb_get_config_descriptor(dev, (C.uint8_t)(config_index), &desc))
 	if rc != 0 {
 		return nil, libusb_error("libusb_get_config_descriptor", rc)
 	}
-	return c2go_Config_Descriptor(cd), nil
+	return c2go_Config_Descriptor(desc), nil
 }
 
-// int 	libusb_get_config_descriptor_by_value (libusb_device *dev, uint8_t bConfigurationValue, struct libusb_config_descriptor **config)
+func Get_Config_Descriptor_By_Value(dev Device, bConfigurationValue uint8) (*Config_Descriptor, error) {
+	var desc *C.struct_libusb_config_descriptor
+	rc := int(C.libusb_get_config_descriptor_by_value(dev, (C.uint8_t)(bConfigurationValue), &desc))
+	if rc != 0 {
+		return nil, libusb_error("libusb_get_config_descriptor_by_value", rc)
+	}
+	return c2go_Config_Descriptor(desc), nil
+}
 
 func Free_Config_Descriptor(config *Config_Descriptor) {
 	C.libusb_free_config_descriptor(config.ptr)
 }
 
 func Get_SS_Endpoint_Companion_Descriptor(ctx Context, endpoint *Endpoint_Descriptor) (*SS_Endpoint_Companion_Descriptor, error) {
-	var cd *C.struct_libusb_ss_endpoint_companion_descriptor
-	rc := int(C.libusb_get_ss_endpoint_companion_descriptor(ctx, endpoint.ptr, &cd))
+	var desc *C.struct_libusb_ss_endpoint_companion_descriptor
+	rc := int(C.libusb_get_ss_endpoint_companion_descriptor(ctx, endpoint.ptr, &desc))
 	if rc != 0 {
 		return nil, libusb_error("libusb_get_ss_endpoint_companion_descriptor", rc)
 	}
-	return c2go_SS_Endpoint_Companion_Descriptor(cd), nil
+	return c2go_SS_Endpoint_Companion_Descriptor(desc), nil
 }
 
 func Free_SS_Endpoint_Companion_Descriptor(ep_comp *SS_Endpoint_Companion_Descriptor) {
@@ -762,36 +793,56 @@ func Free_SS_Endpoint_Companion_Descriptor(ep_comp *SS_Endpoint_Companion_Descri
 }
 
 func Get_BOS_Descriptor(hdl Device_Handle) (*BOS_Descriptor, error) {
-	var bd *C.struct_libusb_bos_descriptor
-	rc := int(C.libusb_get_bos_descriptor(hdl, &bd))
+	var desc *C.struct_libusb_bos_descriptor
+	rc := int(C.libusb_get_bos_descriptor(hdl, &desc))
 	if rc != 0 {
 		return nil, libusb_error("libusb_get_bos_descriptor", rc)
 	}
-	return c2go_BOS_Descriptor(bd), nil
+	return c2go_BOS_Descriptor(desc), nil
 }
 
 func Free_BOS_Descriptor(bos *BOS_Descriptor) {
 	C.libusb_free_bos_descriptor(bos.ptr)
 }
 
-// int 	libusb_get_usb_2_0_extension_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_usb_2_0_extension_descriptor **usb_2_0_extension)
-// void 	libusb_free_usb_2_0_extension_descriptor (struct libusb_usb_2_0_extension_descriptor *usb_2_0_extension)
+func Get_USB_2_0_Extension_Descriptor(ctx Context, dev_cap *BOS_Dev_Capability_Descriptor) (*USB_2_0_Extension_Descriptor, error) {
+	var desc *C.struct_libusb_usb_2_0_extension_descriptor
+	rc := int(C.libusb_get_usb_2_0_extension_descriptor(ctx, dev_cap.ptr, &desc))
+	if rc != 0 {
+		return nil, libusb_error("libusb_get_usb_2_0_extension_descriptor", rc)
+	}
+	return c2go_USB_2_0_Extension_Descriptor(desc), nil
+}
+
+func Free_USB_2_0_Extension_Descriptor(usb_2_0_extension *USB_2_0_Extension_Descriptor) {
+	C.libusb_free_usb_2_0_extension_descriptor(usb_2_0_extension.ptr)
+}
 
 func Get_SS_USB_Device_Capability_Descriptor(ctx Context, dev_cap *BOS_Dev_Capability_Descriptor) (*SS_USB_Device_Capability_Descriptor, error) {
-	var dc *C.struct_libusb_ss_usb_device_capability_descriptor
-	rc := int(C.libusb_get_ss_usb_device_capability_descriptor(ctx, dev_cap.ptr, &dc))
+	var desc *C.struct_libusb_ss_usb_device_capability_descriptor
+	rc := int(C.libusb_get_ss_usb_device_capability_descriptor(ctx, dev_cap.ptr, &desc))
 	if rc != 0 {
 		return nil, libusb_error("libusb_get_ss_usb_device_capability_descriptor", rc)
 	}
-	return c2go_SS_USB_Device_Capability_Descriptor(dc), nil
+	return c2go_SS_USB_Device_Capability_Descriptor(desc), nil
 }
 
 func Free_SS_USB_Device_Capability_Descriptor(ss_usb_device_cap *SS_USB_Device_Capability_Descriptor) {
 	C.libusb_free_ss_usb_device_capability_descriptor(ss_usb_device_cap.ptr)
 }
 
-// int 	libusb_get_container_id_descriptor (struct libusb_context *ctx, struct libusb_bos_dev_capability_descriptor *dev_cap, struct libusb_container_id_descriptor **container_id)
-// void 	libusb_free_container_id_descriptor (struct libusb_container_id_descriptor *container_id)
+func Get_Container_ID_Descriptor(ctx Context, dev_cap *BOS_Dev_Capability_Descriptor) (*Container_ID_Descriptor, error) {
+	var desc *C.struct_libusb_container_id_descriptor
+	rc := int(C.libusb_get_container_id_descriptor(ctx, dev_cap.ptr, &desc))
+	if rc != 0 {
+		return nil, libusb_error("libusb_get_container_id_descriptor", rc)
+	}
+	return c2go_Container_ID_Descriptor(desc), nil
+}
+
+func Free_Container_ID_Descriptor(container_id *Container_ID_Descriptor) {
+	C.libusb_free_container_id_descriptor(container_id.ptr)
+}
 
 func Get_String_Descriptor_ASCII(dev Device_Handle, desc_index uint8, data []byte) ([]byte, error) {
 	rc := int(C.libusb_get_string_descriptor_ascii(dev, (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
@@ -801,8 +852,21 @@ func Get_String_Descriptor_ASCII(dev Device_Handle, desc_index uint8, data []byt
 	return data[:rc], nil
 }
 
-// static int 	libusb_get_descriptor (libusb_device_handle *dev, uint8_t desc_type, uint8_t desc_index, unsigned char *data, int length)
-// static int 	libusb_get_string_descriptor (libusb_device_handle *dev, uint8_t desc_index, uint16_t langid, unsigned char *data, int length)
+func Get_Descriptor(dev Device_Handle, desc_type uint8, desc_index uint8, data []byte) ([]byte, error) {
+	rc := int(C.libusb_get_descriptor(dev, (C.uint8_t)(desc_type), (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
+	if rc < 0 {
+		return nil, libusb_error("libusb_get_descriptor", rc)
+	}
+	return data[:rc], nil
+}
+
+func Get_String_Descriptor(dev Device_Handle, desc_index uint8, langid uint16, data []byte) ([]byte, error) {
+	rc := int(C.libusb_get_string_descriptor(dev, (C.uint8_t)(desc_index), (C.uint16_t)(langid), (*C.uchar)(&data[0]), (C.int)(len(data))))
+	if rc < 0 {
+		return nil, libusb_error("libusb_get_string_descriptor", rc)
+	}
+	return data[:rc], nil
+}
 
 //-----------------------------------------------------------------------------
 // Device hotplug event notification
