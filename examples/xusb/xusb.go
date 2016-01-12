@@ -98,8 +98,8 @@ func test_hid(handle libusb.Device_Handle, endpoint_in uint8) int {
 	//FILE *fd;
 
 	fmt.Printf("\nReading HID Report Descriptors:\n")
-	hid_report_descriptor, err := libusb.Control_Transfer(handle, libusb.LIBUSB_ENDPOINT_IN|libusb.LIBUSB_REQUEST_TYPE_STANDARD|libusb.LIBUSB_RECIPIENT_INTERFACE,
-		libusb.LIBUSB_REQUEST_GET_DESCRIPTOR, libusb.LIBUSB_DT_REPORT<<8, 0, hid_report_descriptor, 1000)
+	hid_report_descriptor, err := libusb.Control_Transfer(handle, libusb.ENDPOINT_IN|libusb.REQUEST_TYPE_STANDARD|libusb.RECIPIENT_INTERFACE,
+		libusb.REQUEST_GET_DESCRIPTOR, libusb.DT_REPORT<<8, 0, hid_report_descriptor, 1000)
 	if err != nil {
 		fmt.Printf("   Failed\n")
 		return -1
@@ -321,7 +321,7 @@ func test_device(vid uint16, pid uint16) int {
 				conf_desc.Interface[i].Altsetting[j].BInterfaceClass,
 				conf_desc.Interface[i].Altsetting[j].BInterfaceSubClass,
 				conf_desc.Interface[i].Altsetting[j].BInterfaceProtocol)
-			if (conf_desc.Interface[i].Altsetting[j].BInterfaceClass == libusb.LIBUSB_CLASS_MASS_STORAGE) &&
+			if (conf_desc.Interface[i].Altsetting[j].BInterfaceClass == libusb.CLASS_MASS_STORAGE) &&
 				((conf_desc.Interface[i].Altsetting[j].BInterfaceSubClass == 0x01) ||
 					(conf_desc.Interface[i].Altsetting[j].BInterfaceSubClass == 0x06)) &&
 				(conf_desc.Interface[i].Altsetting[j].BInterfaceProtocol == 0x50) {
@@ -333,8 +333,8 @@ func test_device(vid uint16, pid uint16) int {
 				endpoint := conf_desc.Interface[i].Altsetting[j].Endpoint[k]
 				fmt.Printf("       endpoint[%d].address: %02X\n", k, endpoint.BEndpointAddress)
 				// Use the first interrupt or bulk IN/OUT endpoints as default for testing
-				if (endpoint.BmAttributes&libusb.LIBUSB_TRANSFER_TYPE_MASK)&(libusb.LIBUSB_TRANSFER_TYPE_BULK|libusb.LIBUSB_TRANSFER_TYPE_INTERRUPT) != 0 {
-					if endpoint.BEndpointAddress&libusb.LIBUSB_ENDPOINT_IN != 0 {
+				if (endpoint.BmAttributes&libusb.TRANSFER_TYPE_MASK)&(libusb.TRANSFER_TYPE_BULK|libusb.TRANSFER_TYPE_INTERRUPT) != 0 {
+					if endpoint.BEndpointAddress&libusb.ENDPOINT_IN != 0 {
 						if endpoint_in == 0 {
 							endpoint_in = endpoint.BEndpointAddress
 						}

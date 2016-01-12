@@ -22,7 +22,7 @@ var logger = log.New(os.Stdout, "", log.Lshortfile)
 //-----------------------------------------------------------------------------
 
 func Test_Error_Name(t *testing.T) {
-	if Error_Name(LIBUSB_ERROR_BUSY) != "LIBUSB_ERROR_BUSY" {
+	if Error_Name(ERROR_BUSY) != "LIBUSB_ERROR_BUSY" {
 		t.Error("FAIL")
 	}
 }
