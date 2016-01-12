@@ -34,10 +34,10 @@ import (
 
 //-----------------------------------------------------------------------------
 
-//  libusb API version
+// libusb API version.
 const API_VERSION = C.LIBUSB_API_VERSION
 
-// Device and/or Interface Class codes
+// Device and/or Interface Class codes.
 const (
 	CLASS_PER_INTERFACE       = C.LIBUSB_CLASS_PER_INTERFACE
 	CLASS_AUDIO               = C.LIBUSB_CLASS_AUDIO
@@ -60,7 +60,7 @@ const (
 	CLASS_VENDOR_SPEC         = C.LIBUSB_CLASS_VENDOR_SPEC
 )
 
-// Descriptor types as defined by the USB specification
+// Descriptor types as defined by the USB specification.
 const (
 	DT_DEVICE                = C.LIBUSB_DT_DEVICE
 	DT_CONFIG                = C.LIBUSB_DT_CONFIG
@@ -77,7 +77,7 @@ const (
 	DT_SS_ENDPOINT_COMPANION = C.LIBUSB_DT_SS_ENDPOINT_COMPANION
 )
 
-// Descriptor sizes per descriptor type
+// Descriptor sizes per descriptor type.
 const DT_DEVICE_SIZE = C.LIBUSB_DT_DEVICE_SIZE
 const DT_CONFIG_SIZE = C.LIBUSB_DT_CONFIG_SIZE
 const DT_INTERFACE_SIZE = C.LIBUSB_DT_INTERFACE_SIZE
@@ -88,7 +88,7 @@ const DT_SS_ENDPOINT_COMPANION_SIZE = C.LIBUSB_DT_SS_ENDPOINT_COMPANION_SIZE
 const DT_BOS_SIZE = C.LIBUSB_DT_BOS_SIZE
 const DT_DEVICE_CAPABILITY_SIZE = C.LIBUSB_DT_DEVICE_CAPABILITY_SIZE
 
-// BOS descriptor sizes
+// BOS descriptor sizes.
 const BT_USB_2_0_EXTENSION_SIZE = C.LIBUSB_BT_USB_2_0_EXTENSION_SIZE
 const BT_SS_USB_DEVICE_CAPABILITY_SIZE = C.LIBUSB_BT_SS_USB_DEVICE_CAPABILITY_SIZE
 const BT_CONTAINER_ID_SIZE = C.LIBUSB_BT_CONTAINER_ID_SIZE
@@ -96,16 +96,16 @@ const DT_BOS_MAX_SIZE = C.LIBUSB_DT_BOS_MAX_SIZE
 const ENDPOINT_ADDRESS_MASK = C.LIBUSB_ENDPOINT_ADDRESS_MASK
 const ENDPOINT_DIR_MASK = C.LIBUSB_ENDPOINT_DIR_MASK
 
-// Endpoint direction. Values for bit 7 of the libusb_endpoint_descriptor::bEndpointAddress "endpoint address" scheme
+// Endpoint direction. Values for bit 7 of Endpoint_Descriptor.BEndpointAddress.
 const (
 	ENDPOINT_IN  = C.LIBUSB_ENDPOINT_IN  // In: device-to-host.
 	ENDPOINT_OUT = C.LIBUSB_ENDPOINT_OUT // Out: host-to-device.
 )
 
-// in bmAttributes
+// in BmAttributes
 const TRANSFER_TYPE_MASK = C.LIBUSB_TRANSFER_TYPE_MASK
 
-// Endpoint transfer type. Values for bits 0:1 of the libusb_endpoint_descriptor::bmAttributes "endpoint attributes" field.
+// Endpoint transfer type. Values for bits 0:1 of Endpoint_Descriptor.BmAttributes.
 const (
 	TRANSFER_TYPE_CONTROL     = C.LIBUSB_TRANSFER_TYPE_CONTROL
 	TRANSFER_TYPE_ISOCHRONOUS = C.LIBUSB_TRANSFER_TYPE_ISOCHRONOUS
@@ -114,7 +114,7 @@ const (
 	TRANSFER_TYPE_BULK_STREAM = C.LIBUSB_TRANSFER_TYPE_BULK_STREAM
 )
 
-// Standard requests, as defined in table 9-5 of the USB 3.0 specifications
+// Standard requests, as defined in table 9-5 of the USB 3.0 specifications.
 const (
 	REQUEST_GET_STATUS        = C.LIBUSB_REQUEST_GET_STATUS
 	REQUEST_CLEAR_FEATURE     = C.LIBUSB_REQUEST_CLEAR_FEATURE
@@ -131,7 +131,7 @@ const (
 	SET_ISOCH_DELAY           = C.LIBUSB_SET_ISOCH_DELAY
 )
 
-// Request type bits of the libusb_control_setup::bmRequestType "bmRequestType" field in control transfers.
+// Request type bits of Control_Setup.BmRequestType.
 const (
 	REQUEST_TYPE_STANDARD = C.LIBUSB_REQUEST_TYPE_STANDARD
 	REQUEST_TYPE_CLASS    = C.LIBUSB_REQUEST_TYPE_CLASS
@@ -139,7 +139,7 @@ const (
 	REQUEST_TYPE_RESERVED = C.LIBUSB_REQUEST_TYPE_RESERVED
 )
 
-// Recipient bits of the libusb_control_setup::bmRequestType "bmRequestType" field in control transfers.
+// Recipient bits of Control_Setup.BmRequestType in control transfers.
 // Values 4 through 31 are reserved.
 const (
 	RECIPIENT_DEVICE    = C.LIBUSB_RECIPIENT_DEVICE
@@ -151,7 +151,7 @@ const (
 const ISO_SYNC_TYPE_MASK = C.LIBUSB_ISO_SYNC_TYPE_MASK
 
 // Synchronization type for isochronous endpoints.
-// Values for bits 2:3 of the libusb_endpoint_descriptor::bmAttributes "bmAttributes" field in libusb_endpoint_descriptor.
+// Values for bits 2:3 of Endpoint_Descriptor.BmAttributes.
 const (
 	ISO_SYNC_TYPE_NONE     = C.LIBUSB_ISO_SYNC_TYPE_NONE
 	ISO_SYNC_TYPE_ASYNC    = C.LIBUSB_ISO_SYNC_TYPE_ASYNC
@@ -162,7 +162,7 @@ const (
 const ISO_USAGE_TYPE_MASK = C.LIBUSB_ISO_USAGE_TYPE_MASK
 
 // Usage type for isochronous endpoints.
-// Values for bits 4:5 of the libusb_endpoint_descriptor::bmAttributes "bmAttributes" field in libusb_endpoint_descriptor.
+// Values for bits 4:5 of Endpoint_Descriptor.BmAttributes.
 const (
 	ISO_USAGE_TYPE_DATA     = C.LIBUSB_ISO_USAGE_TYPE_DATA
 	ISO_USAGE_TYPE_FEEDBACK = C.LIBUSB_ISO_USAGE_TYPE_FEEDBACK
@@ -180,7 +180,7 @@ const (
 	SPEED_SUPER   = C.LIBUSB_SPEED_SUPER
 )
 
-// Supported speeds (wSpeedSupported) bitfield. Indicates what speeds the device supports.
+// Supported speeds (WSpeedSupported) bitfield. Indicates what speeds the device supports.
 const (
 	LOW_SPEED_OPERATION   = C.LIBUSB_LOW_SPEED_OPERATION
 	FULL_SPEED_OPERATION  = C.LIBUSB_FULL_SPEED_OPERATION
@@ -188,17 +188,17 @@ const (
 	SUPER_SPEED_OPERATION = C.LIBUSB_SUPER_SPEED_OPERATION
 )
 
-// Masks for the bits of the libusb_usb_2_0_extension_descriptor::bmAttributes "bmAttributes" field of the USB 2.0 Extension descriptor.
+// Bitmasks for USB_2_0_Extension_Descriptor.BmAttributes.
 const (
 	BM_LPM_SUPPORT = C.LIBUSB_BM_LPM_SUPPORT
 )
 
-// Masks for the bits of the libusb_ss_usb_device_capability_descriptor::bmAttributes "bmAttributes" field of the SuperSpeed USB Device Capability descriptor.
+// Bitmasks for SS_USB_Device_Capability_Descriptor.BmAttributes.
 const (
 	BM_LTM_SUPPORT = C.LIBUSB_BM_LTM_SUPPORT
 )
 
-// USB capability types
+// USB capability types.
 const (
 	BT_WIRELESS_USB_DEVICE_CAPABILITY = C.LIBUSB_BT_WIRELESS_USB_DEVICE_CAPABILITY
 	BT_USB_2_0_EXTENSION              = C.LIBUSB_BT_USB_2_0_EXTENSION
@@ -206,9 +206,7 @@ const (
 	BT_CONTAINER_ID                   = C.LIBUSB_BT_CONTAINER_ID
 )
 
-// Error codes. Most libusb functions return 0 on success or one of these codes on failure.
-// You can call Error_Name() to retrieve a string representation of an error code or
-// Strerror() to get an end-user suitable description of an error code.
+// Error codes.
 const (
 	SUCCESS             = C.LIBUSB_SUCCESS
 	ERROR_IO            = C.LIBUSB_ERROR_IO
@@ -240,7 +238,7 @@ const (
 	TRANSFER_OVERFLOW  = C.LIBUSB_TRANSFER_OVERFLOW
 )
 
-// libusb_transfer.flags values */
+// Transfer.Flags values.
 const (
 	TRANSFER_SHORT_NOT_OK    = C.LIBUSB_TRANSFER_SHORT_NOT_OK
 	TRANSFER_FREE_BUFFER     = C.LIBUSB_TRANSFER_FREE_BUFFER
@@ -284,6 +282,9 @@ const HOTPLUG_MATCH_ANY = C.LIBUSB_HOTPLUG_MATCH_ANY
 //-----------------------------------------------------------------------------
 // structures
 
+// A structure representing the standard USB endpoint descriptor.
+// This descriptor is documented in section 9.6.6 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type Endpoint_Descriptor struct {
 	ptr              *C.struct_libusb_endpoint_descriptor
 	BLength          uint8
@@ -312,6 +313,9 @@ func c2go_Endpoint_Descriptor(x *C.struct_libusb_endpoint_descriptor) *Endpoint_
 	}
 }
 
+// A structure representing the standard USB interface descriptor.
+// This descriptor is documented in section 9.6.5 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type Interface_Descriptor struct {
 	ptr                *C.struct_libusb_interface_descriptor
 	BLength            uint8
@@ -353,6 +357,7 @@ func c2go_Interface_Descriptor(x *C.struct_libusb_interface_descriptor) *Interfa
 	}
 }
 
+// A collection of alternate settings for a particular USB interface.
 type Interface struct {
 	ptr            *C.struct_libusb_interface
 	Num_altsetting int
@@ -376,6 +381,9 @@ func c2go_Interface(x *C.struct_libusb_interface) *Interface {
 	}
 }
 
+// A structure representing the standard USB configuration descriptor.
+// This descriptor is documented in section 9.6.3 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type Config_Descriptor struct {
 	ptr                 *C.struct_libusb_config_descriptor
 	BLength             uint8
@@ -415,6 +423,9 @@ func c2go_Config_Descriptor(x *C.struct_libusb_config_descriptor) *Config_Descri
 	}
 }
 
+// A structure representing the superspeed endpoint companion descriptor.
+// This descriptor is documented in section 9.6.7 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type SS_Endpoint_Companion_Descriptor struct {
 	ptr               *C.struct_libusb_ss_endpoint_companion_descriptor
 	BLength           uint8
@@ -435,6 +446,9 @@ func c2go_SS_Endpoint_Companion_Descriptor(x *C.struct_libusb_ss_endpoint_compan
 	}
 }
 
+// A generic representation of a BOS Device Capability descriptor.
+// It is advised to check BDevCapabilityType and call the matching
+// Get_*_Descriptor function to get a structure fully matching the type.
 type BOS_Dev_Capability_Descriptor struct {
 	ptr                 *C.struct_libusb_bos_dev_capability_descriptor
 	BLength             uint8
@@ -453,6 +467,9 @@ func c2go_BOS_Dev_Capability_Descriptor(x *C.struct_libusb_bos_dev_capability_de
 	}
 }
 
+// A structure representing the Binary Device Object Store (BOS) descriptor.
+// This descriptor is documented in section 9.6.2 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type BOS_Descriptor struct {
 	ptr             *C.struct_libusb_bos_descriptor
 	BLength         uint8
@@ -480,6 +497,9 @@ func c2go_BOS_Descriptor(x *C.struct_libusb_bos_descriptor) *BOS_Descriptor {
 	}
 }
 
+// A structure representing the USB 2.0 Extension descriptor
+// This descriptor is documented in section 9.6.2.1 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type USB_2_0_Extension_Descriptor struct {
 	ptr                *C.struct_libusb_usb_2_0_extension_descriptor
 	BLength            uint8
@@ -498,6 +518,9 @@ func c2go_USB_2_0_Extension_Descriptor(x *C.struct_libusb_usb_2_0_extension_desc
 	}
 }
 
+// A structure representing the SuperSpeed USB Device Capability descriptor
+// This descriptor is documented in section 9.6.2.2 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type SS_USB_Device_Capability_Descriptor struct {
 	ptr                   *C.struct_libusb_ss_usb_device_capability_descriptor
 	BLength               uint8
@@ -524,6 +547,9 @@ func c2go_SS_USB_Device_Capability_Descriptor(x *C.struct_libusb_ss_usb_device_c
 	}
 }
 
+// A structure representing the Container ID descriptor.
+// This descriptor is documented in section 9.6.2.3 of the USB 3.0 specification.
+// All multiple-byte fields, except UUIDs, are represented in host-endian format.
 type Container_ID_Descriptor struct {
 	ptr                *C.struct_libusb_container_id_descriptor
 	BLength            uint8
@@ -545,6 +571,7 @@ func c2go_Container_ID_Descriptor(x *C.struct_libusb_container_id_descriptor) *C
 }
 
 /*
+// Setup packet for control transfers.
 struct libusb_control_setup {
 	uint8_t  bmRequestType;
 	uint8_t  bRequest;
@@ -554,6 +581,9 @@ struct libusb_control_setup {
 };
 */
 
+// A structure representing the standard USB device descriptor.
+// This descriptor is documented in section 9.6.1 of the USB 3.0 specification.
+// All multiple-byte fields are represented in host-endian format.
 type Device_Descriptor struct {
 	ptr                *C.struct_libusb_device_descriptor
 	BLength            uint8
@@ -592,6 +622,7 @@ func c2go_Device_Descriptor(x *C.struct_libusb_device_descriptor) *Device_Descri
 	}
 }
 
+// Structure providing the version of the libusb runtime.
 type Version struct {
 	ptr      *C.struct_libusb_version
 	Major    uint16
@@ -614,10 +645,16 @@ func c2go_Version(x *C.struct_libusb_version) *Version {
 	}
 }
 
+// Structure representing a libusb session.
 type Context *C.struct_libusb_context
+
+// Structure representing a USB device detected on the system.
 type Device *C.struct_libusb_device
+
+// Structure representing a handle on a USB device.
 type Device_Handle *C.struct_libusb_device_handle
-type Hotplug_Callback *C.struct_libusb_hotplug_callback
+
+//type Hotplug_Callback *C.struct_libusb_hotplug_callback
 
 //-----------------------------------------------------------------------------
 // errors
