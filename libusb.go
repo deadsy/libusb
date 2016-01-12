@@ -13,12 +13,15 @@ package libusb
 #cgo LDFLAGS: -lusb-1.0
 #include <libusb-1.0/libusb.h>
 
-// cgo has trouble seeing x.dev_capability_data because it is a trailing []/[0] field
+// When a C struct ends with a zero-sized field, but the struct itself is not zero-sized,
+// Go code can no longer refer to the zero-sized field. Any such references will have to be rewritten.
+// https://golang.org/doc/go1.5#cgo
+// https://github.com/golang/go/issues/11925
+
 static uint8_t *dev_capability_data_ptr(struct libusb_bos_dev_capability_descriptor *x) {
   return &x->dev_capability_data[0];
 }
 
-// cgo has trouble seeing x.dev_capability because it is a trailing []/[0] field
 static struct libusb_bos_dev_capability_descriptor **dev_capability_ptr(struct libusb_bos_descriptor *x) {
   return &x->dev_capability[0];
 }
@@ -27,7 +30,6 @@ static struct libusb_bos_dev_capability_descriptor **dev_capability_ptr(struct l
 import "C"
 
 import (
-	"fmt"
 	"reflect"
 	"unsafe"
 )
@@ -659,20 +661,12 @@ type Device_Handle *C.struct_libusb_device_handle
 //-----------------------------------------------------------------------------
 // errors
 
-type libusb_error_t struct {
-	name string
-	code int
+type libusb_error struct {
+	Code int
 }
 
-func (e *libusb_error_t) Error() string {
-	return fmt.Sprintf("libusb_error: %s() returned %s(%d)", e.name, Error_Name(e.code), e.code)
-}
-
-func libusb_error(name string, code int) error {
-	return &libusb_error_t{
-		name: name,
-		code: code,
-	}
+func (e *libusb_error) Error() string {
+	return Error_Name(e.Code)
 }
 
 //-----------------------------------------------------------------------------
@@ -685,7 +679,7 @@ func Set_Debug(ctx Context, level int) {
 func Init(ctx *Context) error {
 	rc := int(C.libusb_init((**C.struct_libusb_context)(ctx)))
 	if rc != 0 {
-		return libusb_error("libusb_init", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -701,7 +695,7 @@ func Get_Device_List(ctx Context) ([]Device, error) {
 	var hdl **C.struct_libusb_device
 	rc := int(C.libusb_get_device_list(ctx, (***C.struct_libusb_device)(&hdl)))
 	if rc < 0 {
-		return nil, libusb_error("libusb_get_device_list", rc)
+		return nil, &libusb_error{rc}
 	}
 	// turn the c array into a slice of device pointers
 	var list []Device
@@ -730,7 +724,7 @@ func Get_Port_Number(dev Device) uint8 {
 func Get_Port_Numbers(dev Device, ports []byte) ([]byte, error) {
 	rc := int(C.libusb_get_port_numbers(dev, (*C.uint8_t)(&ports[0]), (C.int)(len(ports))))
 	if rc < 0 {
-		return nil, libusb_error("libusb_get_port_numbers", rc)
+		return nil, &libusb_error{rc}
 	}
 	return ports[:rc], nil
 }
@@ -767,7 +761,7 @@ func Open(dev Device) (Device_Handle, error) {
 	var hdl Device_Handle
 	rc := int(C.libusb_open(dev, (**C.struct_libusb_device_handle)(&hdl)))
 	if rc < 0 {
-		return nil, libusb_error("libusb_open", rc)
+		return nil, &libusb_error{rc}
 	}
 	return hdl, nil
 }
@@ -788,7 +782,7 @@ func Get_Configuration(hdl Device_Handle) (int, error) {
 	var config C.int
 	rc := int(C.libusb_get_configuration(hdl, &config))
 	if rc < 0 {
-		return 0, libusb_error("libusb_get_configuration", rc)
+		return 0, &libusb_error{rc}
 	}
 	return int(config), nil
 }
@@ -796,7 +790,7 @@ func Get_Configuration(hdl Device_Handle) (int, error) {
 func Set_Configuration(hdl Device_Handle, configuration int) error {
 	rc := int(C.libusb_set_configuration(hdl, (C.int)(configuration)))
 	if rc < 0 {
-		return libusb_error("libusb_set_configuration", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -804,7 +798,7 @@ func Set_Configuration(hdl Device_Handle, configuration int) error {
 func Claim_Interface(hdl Device_Handle, interface_number int) error {
 	rc := int(C.libusb_claim_interface(hdl, (C.int)(interface_number)))
 	if rc < 0 {
-		return libusb_error("libusb_claim_interface", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -812,7 +806,7 @@ func Claim_Interface(hdl Device_Handle, interface_number int) error {
 func Release_Interface(hdl Device_Handle, interface_number int) error {
 	rc := int(C.libusb_release_interface(hdl, (C.int)(interface_number)))
 	if rc < 0 {
-		return libusb_error("libusb_release_interface", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -820,7 +814,7 @@ func Release_Interface(hdl Device_Handle, interface_number int) error {
 func Set_Interface_Alt_Setting(hdl Device_Handle, interface_number int, alternate_setting int) error {
 	rc := int(C.libusb_set_interface_alt_setting(hdl, (C.int)(interface_number), (C.int)(alternate_setting)))
 	if rc < 0 {
-		return libusb_error("libusb_set_interface_alt_setting", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -828,7 +822,7 @@ func Set_Interface_Alt_Setting(hdl Device_Handle, interface_number int, alternat
 func Clear_Halt(hdl Device_Handle, endpoint uint8) error {
 	rc := int(C.libusb_clear_halt(hdl, (C.uchar)(endpoint)))
 	if rc < 0 {
-		return libusb_error("libusb_clear_halt", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -836,7 +830,7 @@ func Clear_Halt(hdl Device_Handle, endpoint uint8) error {
 func Reset_Device(hdl Device_Handle) error {
 	rc := int(C.libusb_reset_device(hdl))
 	if rc < 0 {
-		return libusb_error("libusb_reset_device", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -844,7 +838,7 @@ func Reset_Device(hdl Device_Handle) error {
 func Kernel_Driver_Active(hdl Device_Handle, interface_number int) (bool, error) {
 	rc := int(C.libusb_kernel_driver_active(hdl, (C.int)(interface_number)))
 	if rc < 0 {
-		return false, libusb_error("libusb_kernel_driver_active", rc)
+		return false, &libusb_error{rc}
 	}
 	return rc != 0, nil
 }
@@ -852,7 +846,7 @@ func Kernel_Driver_Active(hdl Device_Handle, interface_number int) (bool, error)
 func Detach_Kernel_Driver(hdl Device_Handle, interface_number int) error {
 	rc := int(C.libusb_detach_kernel_driver(hdl, (C.int)(interface_number)))
 	if rc < 0 {
-		return libusb_error("libusb_detach_kernel_driver", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -860,7 +854,7 @@ func Detach_Kernel_Driver(hdl Device_Handle, interface_number int) error {
 func Attach_Kernel_Driver(hdl Device_Handle, interface_number int) error {
 	rc := int(C.libusb_attach_kernel_driver(hdl, (C.int)(interface_number)))
 	if rc < 0 {
-		return libusb_error("libusb_attach_kernel_driver", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -872,7 +866,7 @@ func Set_Auto_Detach_Kernel_Driver(hdl Device_Handle, enable bool) error {
 	}
 	rc := int(C.libusb_set_auto_detach_kernel_driver(hdl, (C.int)(enable_int)))
 	if rc < 0 {
-		return libusb_error("libusb_set_auto_detach_kernel_driver", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -902,7 +896,7 @@ func Setlocale(locale string) error {
 	cstr := C.CString(locale)
 	rc := int(C.libusb_setlocale(cstr))
 	if rc < 0 {
-		return libusb_error("libusb_setlocale", rc)
+		return &libusb_error{rc}
 	}
 	return nil
 }
@@ -918,7 +912,7 @@ func Get_Device_Descriptor(dev Device) (*Device_Descriptor, error) {
 	var desc C.struct_libusb_device_descriptor
 	rc := int(C.libusb_get_device_descriptor(dev, &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_device_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_Device_Descriptor(&desc), nil
 }
@@ -927,7 +921,7 @@ func Get_Active_Config_Descriptor(dev Device) (*Config_Descriptor, error) {
 	var desc *C.struct_libusb_config_descriptor
 	rc := int(C.libusb_get_active_config_descriptor(dev, &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_active_config_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_Config_Descriptor(desc), nil
 }
@@ -936,7 +930,7 @@ func Get_Config_Descriptor(dev Device, config_index uint8) (*Config_Descriptor, 
 	var desc *C.struct_libusb_config_descriptor
 	rc := int(C.libusb_get_config_descriptor(dev, (C.uint8_t)(config_index), &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_config_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_Config_Descriptor(desc), nil
 }
@@ -945,7 +939,7 @@ func Get_Config_Descriptor_By_Value(dev Device, bConfigurationValue uint8) (*Con
 	var desc *C.struct_libusb_config_descriptor
 	rc := int(C.libusb_get_config_descriptor_by_value(dev, (C.uint8_t)(bConfigurationValue), &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_config_descriptor_by_value", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_Config_Descriptor(desc), nil
 }
@@ -958,7 +952,7 @@ func Get_SS_Endpoint_Companion_Descriptor(ctx Context, endpoint *Endpoint_Descri
 	var desc *C.struct_libusb_ss_endpoint_companion_descriptor
 	rc := int(C.libusb_get_ss_endpoint_companion_descriptor(ctx, endpoint.ptr, &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_ss_endpoint_companion_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_SS_Endpoint_Companion_Descriptor(desc), nil
 }
@@ -971,7 +965,7 @@ func Get_BOS_Descriptor(hdl Device_Handle) (*BOS_Descriptor, error) {
 	var desc *C.struct_libusb_bos_descriptor
 	rc := int(C.libusb_get_bos_descriptor(hdl, &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_bos_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_BOS_Descriptor(desc), nil
 }
@@ -984,7 +978,7 @@ func Get_USB_2_0_Extension_Descriptor(ctx Context, dev_cap *BOS_Dev_Capability_D
 	var desc *C.struct_libusb_usb_2_0_extension_descriptor
 	rc := int(C.libusb_get_usb_2_0_extension_descriptor(ctx, dev_cap.ptr, &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_usb_2_0_extension_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_USB_2_0_Extension_Descriptor(desc), nil
 }
@@ -997,7 +991,7 @@ func Get_SS_USB_Device_Capability_Descriptor(ctx Context, dev_cap *BOS_Dev_Capab
 	var desc *C.struct_libusb_ss_usb_device_capability_descriptor
 	rc := int(C.libusb_get_ss_usb_device_capability_descriptor(ctx, dev_cap.ptr, &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_ss_usb_device_capability_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_SS_USB_Device_Capability_Descriptor(desc), nil
 }
@@ -1010,7 +1004,7 @@ func Get_Container_ID_Descriptor(ctx Context, dev_cap *BOS_Dev_Capability_Descri
 	var desc *C.struct_libusb_container_id_descriptor
 	rc := int(C.libusb_get_container_id_descriptor(ctx, dev_cap.ptr, &desc))
 	if rc != 0 {
-		return nil, libusb_error("libusb_get_container_id_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return c2go_Container_ID_Descriptor(desc), nil
 }
@@ -1022,7 +1016,7 @@ func Free_Container_ID_Descriptor(container_id *Container_ID_Descriptor) {
 func Get_String_Descriptor_ASCII(dev Device_Handle, desc_index uint8, data []byte) ([]byte, error) {
 	rc := int(C.libusb_get_string_descriptor_ascii(dev, (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
 	if rc < 0 {
-		return nil, libusb_error("libusb_get_string_descriptor_ascii", rc)
+		return nil, &libusb_error{rc}
 	}
 	return data[:rc], nil
 }
@@ -1030,7 +1024,7 @@ func Get_String_Descriptor_ASCII(dev Device_Handle, desc_index uint8, data []byt
 func Get_Descriptor(dev Device_Handle, desc_type uint8, desc_index uint8, data []byte) ([]byte, error) {
 	rc := int(C.libusb_get_descriptor(dev, (C.uint8_t)(desc_type), (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
 	if rc < 0 {
-		return nil, libusb_error("libusb_get_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return data[:rc], nil
 }
@@ -1038,7 +1032,7 @@ func Get_Descriptor(dev Device_Handle, desc_type uint8, desc_index uint8, data [
 func Get_String_Descriptor(dev Device_Handle, desc_index uint8, langid uint16, data []byte) ([]byte, error) {
 	rc := int(C.libusb_get_string_descriptor(dev, (C.uint8_t)(desc_index), (C.uint16_t)(langid), (*C.uchar)(&data[0]), (C.int)(len(data))))
 	if rc < 0 {
-		return nil, libusb_error("libusb_get_string_descriptor", rc)
+		return nil, &libusb_error{rc}
 	}
 	return data[:rc], nil
 }
@@ -1101,7 +1095,7 @@ func Control_Transfer(hdl Device_Handle, bmRequestType uint8, bRequest uint8, wV
 	rc := int(C.libusb_control_transfer(hdl, (C.uint8_t)(bmRequestType), (C.uint8_t)(bRequest), (C.uint16_t)(wValue), (C.uint16_t)(wIndex),
 		(*C.uchar)(&data[0]), (C.uint16_t)(len(data)), (C.uint)(timeout)))
 	if rc < 0 {
-		return nil, libusb_error("libusb_control_transfer", rc)
+		return nil, &libusb_error{rc}
 	}
 	return data[:rc], nil
 }
@@ -1110,7 +1104,7 @@ func Bulk_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout uint)
 	var transferred C.int
 	rc := int(C.libusb_bulk_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(len(data)), &transferred, (C.uint)(timeout)))
 	if rc != 0 {
-		return nil, libusb_error("libusb_bulk_transfer", rc)
+		return nil, &libusb_error{rc}
 	}
 	return data[:int(transferred)], nil
 }
@@ -1119,7 +1113,7 @@ func Interrupt_Transfer(hdl Device_Handle, endpoint uint8, data []byte, timeout 
 	var transferred C.int
 	rc := int(C.libusb_interrupt_transfer(hdl, (C.uchar)(endpoint), (*C.uchar)(&data[0]), (C.int)(len(data)), &transferred, (C.uint)(timeout)))
 	if rc != 0 {
-		return nil, libusb_error("libusb_interrupt_transfer", rc)
+		return nil, &libusb_error{rc}
 	}
 	return data[:int(transferred)], nil
 }
