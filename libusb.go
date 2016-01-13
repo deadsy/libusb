@@ -30,9 +30,38 @@ static struct libusb_bos_dev_capability_descriptor **dev_capability_ptr(struct l
 import "C"
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"unsafe"
 )
+
+//-----------------------------------------------------------------------------
+// utilities
+
+func bcd2int(x int) int {
+	return ((x>>12)&15)*1000 +
+		((x>>8)&15)*100 +
+		((x>>4)&15)*10 +
+		((x>>0)&15)*1
+}
+
+func indent(s string) string {
+	x := strings.Split(s, "\n")
+	for i, _ := range x {
+		x[i] = fmt.Sprintf("%s%s", "  ", x[i])
+	}
+	return strings.Join(x, "\n")
+}
+
+// return a string for the extra buffer
+func Extra_str(x []byte) string {
+	s := make([]string, len(x))
+	for i, v := range x {
+		s[i] = fmt.Sprintf("%02x", v)
+	}
+	return fmt.Sprintf("[%s]", strings.Join(s, " "))
+}
 
 //-----------------------------------------------------------------------------
 
@@ -282,7 +311,6 @@ const (
 const HOTPLUG_MATCH_ANY = C.LIBUSB_HOTPLUG_MATCH_ANY
 
 //-----------------------------------------------------------------------------
-// structures
 
 // A structure representing the standard USB endpoint descriptor.
 // This descriptor is documented in section 9.6.6 of the USB 3.0 specification.
@@ -314,6 +342,23 @@ func c2go_Endpoint_Descriptor(x *C.struct_libusb_endpoint_descriptor) *Endpoint_
 		Extra:            C.GoBytes(unsafe.Pointer(x.extra), x.extra_length),
 	}
 }
+
+// return a indented string for an Endpoint_Descriptor
+func Endpoint_Descriptor_str(x *Endpoint_Descriptor) string {
+	s := make([]string, 0, 1)
+	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
+	s = append(s, fmt.Sprintf("bDescriptorType %d", x.BDescriptorType))
+	s = append(s, fmt.Sprintf("bEndpointAddress %d", x.BEndpointAddress))
+	s = append(s, fmt.Sprintf("bmAttributes %d", x.BmAttributes))
+	s = append(s, fmt.Sprintf("wMaxPacketSize %d", x.WMaxPacketSize))
+	s = append(s, fmt.Sprintf("bInterval %d", x.BInterval))
+	s = append(s, fmt.Sprintf("bRefresh %d", x.BRefresh))
+	s = append(s, fmt.Sprintf("bSynchAddress %d", x.BSynchAddress))
+	s = append(s, fmt.Sprintf("extra %s", Extra_str(x.Extra)))
+	return indent(strings.Join(s, "\n"))
+}
+
+//-----------------------------------------------------------------------------
 
 // A structure representing the standard USB interface descriptor.
 // This descriptor is documented in section 9.6.5 of the USB 3.0 specification.
@@ -359,6 +404,28 @@ func c2go_Interface_Descriptor(x *C.struct_libusb_interface_descriptor) *Interfa
 	}
 }
 
+// return a indented string for an Interface_Descriptor
+func Interface_Descriptor_str(x *Interface_Descriptor) string {
+	s := make([]string, 0, 1)
+	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
+	s = append(s, fmt.Sprintf("bDescriptorType %d", x.BDescriptorType))
+	s = append(s, fmt.Sprintf("bInterfaceNumber %d", x.BInterfaceNumber))
+	s = append(s, fmt.Sprintf("bAlternateSetting %d", x.BAlternateSetting))
+	s = append(s, fmt.Sprintf("bNumEndpoints %d", x.BNumEndpoints))
+	s = append(s, fmt.Sprintf("bInterfaceClass %d", x.BInterfaceClass))
+	s = append(s, fmt.Sprintf("bInterfaceSubClass %d", x.BInterfaceSubClass))
+	s = append(s, fmt.Sprintf("bInterfaceProtocol %d", x.BInterfaceProtocol))
+	s = append(s, fmt.Sprintf("iInterface %d", x.IInterface))
+	for i, v := range x.Endpoint {
+		s = append(s, fmt.Sprintf("Endpoint %d:", i))
+		s = append(s, fmt.Sprintf(Endpoint_Descriptor_str(v)))
+	}
+	s = append(s, fmt.Sprintf("extra %s", Extra_str(x.Extra)))
+	return indent(strings.Join(s, "\n"))
+}
+
+//-----------------------------------------------------------------------------
+
 // A collection of alternate settings for a particular USB interface.
 type Interface struct {
 	ptr            *C.struct_libusb_interface
@@ -382,6 +449,19 @@ func c2go_Interface(x *C.struct_libusb_interface) *Interface {
 		Altsetting:     altsetting,
 	}
 }
+
+// return a indented string for an Interface
+func Interface_str(x *Interface) string {
+	s := make([]string, 0, 1)
+	s = append(s, fmt.Sprintf("num_altsetting %d", x.Num_altsetting))
+	for i, v := range x.Altsetting {
+		s = append(s, fmt.Sprintf("Interface Descriptor %d:", i))
+		s = append(s, fmt.Sprintf(Interface_Descriptor_str(v)))
+	}
+	return indent(strings.Join(s, "\n"))
+}
+
+//-----------------------------------------------------------------------------
 
 // A structure representing the standard USB configuration descriptor.
 // This descriptor is documented in section 9.6.3 of the USB 3.0 specification.
@@ -425,6 +505,27 @@ func c2go_Config_Descriptor(x *C.struct_libusb_config_descriptor) *Config_Descri
 	}
 }
 
+// return a indented string for a Config_Descriptor
+func Config_Descriptor_str(x *Config_Descriptor) string {
+	s := make([]string, 0, 1)
+	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
+	s = append(s, fmt.Sprintf("bDescriptorType %d", x.BDescriptorType))
+	s = append(s, fmt.Sprintf("wTotalLength %d", x.WTotalLength))
+	s = append(s, fmt.Sprintf("bNumInterfaces %d", x.BNumInterfaces))
+	s = append(s, fmt.Sprintf("bConfigurationValue %d", x.BConfigurationValue))
+	s = append(s, fmt.Sprintf("iConfiguration %d", x.IConfiguration))
+	s = append(s, fmt.Sprintf("bmAttributes %d", x.BmAttributes))
+	s = append(s, fmt.Sprintf("MaxPower %d", x.MaxPower))
+	for i, v := range x.Interface {
+		s = append(s, fmt.Sprintf("Interface %d:", i))
+		s = append(s, fmt.Sprintf(Interface_str(v)))
+	}
+	s = append(s, fmt.Sprintf("extra %s", Extra_str(x.Extra)))
+	return indent(strings.Join(s, "\n"))
+}
+
+//-----------------------------------------------------------------------------
+
 // A structure representing the superspeed endpoint companion descriptor.
 // This descriptor is documented in section 9.6.7 of the USB 3.0 specification.
 // All multiple-byte fields are represented in host-endian format.
@@ -448,6 +549,8 @@ func c2go_SS_Endpoint_Companion_Descriptor(x *C.struct_libusb_ss_endpoint_compan
 	}
 }
 
+//-----------------------------------------------------------------------------
+
 // A generic representation of a BOS Device Capability descriptor.
 // It is advised to check BDevCapabilityType and call the matching
 // Get_*_Descriptor function to get a structure fully matching the type.
@@ -468,6 +571,8 @@ func c2go_BOS_Dev_Capability_Descriptor(x *C.struct_libusb_bos_dev_capability_de
 		Dev_capability_data: C.GoBytes(unsafe.Pointer(C.dev_capability_data_ptr(x)), C.int(x.bLength-3)),
 	}
 }
+
+//-----------------------------------------------------------------------------
 
 // A structure representing the Binary Device Object Store (BOS) descriptor.
 // This descriptor is documented in section 9.6.2 of the USB 3.0 specification.
@@ -499,6 +604,8 @@ func c2go_BOS_Descriptor(x *C.struct_libusb_bos_descriptor) *BOS_Descriptor {
 	}
 }
 
+//-----------------------------------------------------------------------------
+
 // A structure representing the USB 2.0 Extension descriptor
 // This descriptor is documented in section 9.6.2.1 of the USB 3.0 specification.
 // All multiple-byte fields are represented in host-endian format.
@@ -519,6 +626,8 @@ func c2go_USB_2_0_Extension_Descriptor(x *C.struct_libusb_usb_2_0_extension_desc
 		BmAttributes:       uint32(x.bmAttributes),
 	}
 }
+
+//-----------------------------------------------------------------------------
 
 // A structure representing the SuperSpeed USB Device Capability descriptor
 // This descriptor is documented in section 9.6.2.2 of the USB 3.0 specification.
@@ -549,6 +658,8 @@ func c2go_SS_USB_Device_Capability_Descriptor(x *C.struct_libusb_ss_usb_device_c
 	}
 }
 
+//-----------------------------------------------------------------------------
+
 // A structure representing the Container ID descriptor.
 // This descriptor is documented in section 9.6.2.3 of the USB 3.0 specification.
 // All multiple-byte fields, except UUIDs, are represented in host-endian format.
@@ -572,6 +683,8 @@ func c2go_Container_ID_Descriptor(x *C.struct_libusb_container_id_descriptor) *C
 	}
 }
 
+//-----------------------------------------------------------------------------
+
 /*
 // Setup packet for control transfers.
 struct libusb_control_setup {
@@ -582,6 +695,8 @@ struct libusb_control_setup {
 	uint16_t wLength;
 };
 */
+
+//-----------------------------------------------------------------------------
 
 // A structure representing the standard USB device descriptor.
 // This descriptor is documented in section 9.6.1 of the USB 3.0 specification.
@@ -624,6 +739,28 @@ func c2go_Device_Descriptor(x *C.struct_libusb_device_descriptor) *Device_Descri
 	}
 }
 
+// return a indented string for a Device_Descriptor
+func Device_Descriptor_str(x *Device_Descriptor) string {
+	s := make([]string, 0, 1)
+	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
+	s = append(s, fmt.Sprintf("bDescriptorType %d", x.BDescriptorType))
+	s = append(s, fmt.Sprintf("bcdUSB %.2f", float32(bcd2int(int(x.BcdUSB)))/100.0))
+	s = append(s, fmt.Sprintf("bDeviceClass %d", x.BDeviceClass))
+	s = append(s, fmt.Sprintf("bDeviceSubClass %d", x.BDeviceSubClass))
+	s = append(s, fmt.Sprintf("bDeviceProtocol %d", x.BDeviceProtocol))
+	s = append(s, fmt.Sprintf("bMaxPacketSize0 %d", x.BMaxPacketSize0))
+	s = append(s, fmt.Sprintf("idVendor 0x%04x", x.IdVendor))
+	s = append(s, fmt.Sprintf("idProduct 0x%04x", x.IdProduct))
+	s = append(s, fmt.Sprintf("bcdDevice %.2f", float32(bcd2int(int(x.BcdDevice)))/100.0))
+	s = append(s, fmt.Sprintf("iManufacturer %d", x.IManufacturer))
+	s = append(s, fmt.Sprintf("iProduct %d", x.IProduct))
+	s = append(s, fmt.Sprintf("iSerialNumber %d", x.ISerialNumber))
+	s = append(s, fmt.Sprintf("bNumConfigurations %d", x.BNumConfigurations))
+	return indent(strings.Join(s, "\n"))
+}
+
+//-----------------------------------------------------------------------------
+
 // Structure providing the version of the libusb runtime.
 type Version struct {
 	ptr      *C.struct_libusb_version
@@ -646,6 +783,8 @@ func c2go_Version(x *C.struct_libusb_version) *Version {
 		Describe: C.GoString(x.describe),
 	}
 }
+
+//-----------------------------------------------------------------------------
 
 // Structure representing a libusb session.
 type Context *C.struct_libusb_context
@@ -1013,24 +1152,24 @@ func Free_Container_ID_Descriptor(container_id *Container_ID_Descriptor) {
 	C.libusb_free_container_id_descriptor(container_id.ptr)
 }
 
-func Get_String_Descriptor_ASCII(dev Device_Handle, desc_index uint8, data []byte) ([]byte, error) {
-	rc := int(C.libusb_get_string_descriptor_ascii(dev, (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
+func Get_String_Descriptor_ASCII(hdl Device_Handle, desc_index uint8, data []byte) ([]byte, error) {
+	rc := int(C.libusb_get_string_descriptor_ascii(hdl, (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
 	if rc < 0 {
 		return nil, &libusb_error{rc}
 	}
 	return data[:rc], nil
 }
 
-func Get_Descriptor(dev Device_Handle, desc_type uint8, desc_index uint8, data []byte) ([]byte, error) {
-	rc := int(C.libusb_get_descriptor(dev, (C.uint8_t)(desc_type), (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
+func Get_Descriptor(hdl Device_Handle, desc_type uint8, desc_index uint8, data []byte) ([]byte, error) {
+	rc := int(C.libusb_get_descriptor(hdl, (C.uint8_t)(desc_type), (C.uint8_t)(desc_index), (*C.uchar)(&data[0]), (C.int)(len(data))))
 	if rc < 0 {
 		return nil, &libusb_error{rc}
 	}
 	return data[:rc], nil
 }
 
-func Get_String_Descriptor(dev Device_Handle, desc_index uint8, langid uint16, data []byte) ([]byte, error) {
-	rc := int(C.libusb_get_string_descriptor(dev, (C.uint8_t)(desc_index), (C.uint16_t)(langid), (*C.uchar)(&data[0]), (C.int)(len(data))))
+func Get_String_Descriptor(hdl Device_Handle, desc_index uint8, langid uint16, data []byte) ([]byte, error) {
+	rc := int(C.libusb_get_string_descriptor(hdl, (C.uint8_t)(desc_index), (C.uint16_t)(langid), (*C.uchar)(&data[0]), (C.int)(len(data))))
 	if rc < 0 {
 		return nil, &libusb_error{rc}
 	}
