@@ -1,25 +1,82 @@
+//-----------------------------------------------------------------------------
+/*
+
+Simple driver for a MIDI keyboard
+
+Open the device with the provided VID/PID.
+Bulk read from the first input endpoint.
+Interpret the data as USB MIDI events.
+
+*/
+//-----------------------------------------------------------------------------
+
 package main
 
 import (
 	"fmt"
 	"github.com/deadsy/libusb"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
-func display_String_Descriptor(hdl libusb.Device_Handle, name string, idx uint8) {
-	if idx != 0 {
-		str := make([]byte, 128)
-		str, err := libusb.Get_String_Descriptor_ASCII(hdl, idx, str)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			return
-		}
-		fmt.Printf("%s(%d) %s\n", name, idx, str)
+type ep_info struct {
+	itf int
+	ep  *libusb.Endpoint_Descriptor
+}
+
+// Korg Nano Key 2
+const vid uint16 = 0x944
+const pid uint16 = 0x115
+
+var quit bool = false
+
+const NOTES_IN_OCTAVE = 12
+
+func midi_note_name(note byte, mode string) string {
+	sharps := [NOTES_IN_OCTAVE]string{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
+	flats := [NOTES_IN_OCTAVE]string{"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"}
+	note %= NOTES_IN_OCTAVE
+	if mode == "#" {
+		return sharps[note]
+	}
+	return flats[note]
+}
+
+// return a note name with sharp and flat forms
+func midi_full_note_name(note byte) string {
+	s_name := midi_note_name(note, "#")
+	f_name := midi_note_name(note, "b")
+	if s_name != f_name {
+		return fmt.Sprintf("%s/%s", s_name, f_name)
+	}
+	return s_name
+}
+
+func midi_event(event []byte) {
+	if event[0] == 0 &&
+		event[1] == 0 &&
+		event[2] == 0 &&
+		event[3] == 0 {
+		//ignore
+		return
+	}
+	ch := (event[0] >> 4) & 15
+	switch event[0] & 15 {
+	case 8:
+		fmt.Printf("ch %d note off %02x %02x %02x %s\n", ch, event[1], event[2], event[3], midi_full_note_name(event[2]))
+	case 9:
+		fmt.Printf("ch %d note on  %02x %02x %02x %s\n", ch, event[1], event[2], event[3], midi_full_note_name(event[2]))
+	case 11:
+		fmt.Printf("ch %d ctrl     %02x %02x %02x\n", ch, event[1], event[2], event[3])
+	case 14:
+		fmt.Printf("ch %d pitch    %02x %02x %02x\n", ch, event[1], event[2], event[3])
+	default:
+		fmt.Printf("ch %d ?        %02x %02x %02x\n", ch, event[1], event[2], event[3])
 	}
 }
 
 func midi_device(ctx libusb.Context, vid uint16, pid uint16) {
-
 	fmt.Printf("Opening device %04X:%04X ", vid, pid)
 	hdl := libusb.Open_Device_With_VID_PID(ctx, vid, pid)
 	if hdl == nil {
@@ -30,45 +87,80 @@ func midi_device(ctx libusb.Context, vid uint16, pid uint16) {
 	defer libusb.Close(hdl)
 
 	dev := libusb.Get_Device(hdl)
-
-	fmt.Printf("Device Descriptor:\n")
 	dd, err := libusb.Get_Device_Descriptor(dev)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		return
 	}
 
-	fmt.Printf("%s\n", libusb.Device_Descriptor_str(dd))
-
-	fmt.Printf("String Descriptors:\n")
-	display_String_Descriptor(hdl, "  iManufacturer", dd.IManufacturer)
-	display_String_Descriptor(hdl, "  iProduct", dd.IProduct)
-	display_String_Descriptor(hdl, "  iSerialNumber", dd.ISerialNumber)
+	// record information on input endpoints
+	ep_in := make([]ep_info, 0, 1)
 
 	for i := 0; i < int(dd.BNumConfigurations); i++ {
-		fmt.Printf("Configuration Descriptor %d:\n", i)
 		cd, err := libusb.Get_Config_Descriptor(dev, uint8(i))
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			return
 		}
-		fmt.Printf("%s\n", libusb.Config_Descriptor_str(cd))
+		// iterate across endpoints
+		for _, itf := range cd.Interface {
+			for _, id := range itf.Altsetting {
+				for _, ep := range id.Endpoint {
+					if ep.BEndpointAddress&libusb.ENDPOINT_IN != 0 {
+						ep_in = append(ep_in, ep_info{itf: i, ep: ep})
+					}
+				}
+			}
+		}
+
 		libusb.Free_Config_Descriptor(cd)
 	}
+
+	fmt.Printf("num input endpoints %d\n", len(ep_in))
+	libusb.Set_Auto_Detach_Kernel_Driver(hdl, true)
+
+	// claim the interface
+	err = libusb.Claim_Interface(hdl, ep_in[0].itf)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return
+	}
+	defer libusb.Release_Interface(hdl, ep_in[0].itf)
+
+	data := make([]byte, ep_in[0].ep.WMaxPacketSize)
+	for quit == false {
+		data, err := libusb.Bulk_Transfer(hdl, ep_in[0].ep.BEndpointAddress, data, 1000)
+		if err == nil {
+			for i := 0; i < len(data); i += 4 {
+				// each midi event is 4 bytes
+				midi_event(data[i : i+4])
+			}
+		}
+	}
+}
+
+func midi_main() int {
+	var ctx libusb.Context
+	err := libusb.Init(&ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return -1
+	}
+	defer libusb.Exit(ctx)
+	midi_device(ctx, 0x944, 0x115)
+	return 0
 }
 
 func main() {
 
-	var ctx libusb.Context
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	err := libusb.Init(&ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(-1)
-	}
-	defer libusb.Exit(ctx)
+	go func() {
+		sig := <-sigs
+		fmt.Printf("\n%s\n", sig)
+		quit = true
+	}()
 
-	midi_device(ctx, 0x944, 0x115)
-
-	os.Exit(0)
+	os.Exit(midi_main())
 }

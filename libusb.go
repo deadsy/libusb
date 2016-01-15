@@ -39,11 +39,12 @@ import (
 //-----------------------------------------------------------------------------
 // utilities
 
-func bcd2int(x int) int {
-	return ((x>>12)&15)*1000 +
-		((x>>8)&15)*100 +
-		((x>>4)&15)*10 +
-		((x>>0)&15)*1
+func bcd2str(x uint16) string {
+	if (x>>12)&15 != 0 {
+		return fmt.Sprintf("%d%d.%d%d", (x>>12)&15, (x>>8)&15, (x>>4)&15, (x>>0)&15)
+	} else {
+		return fmt.Sprintf("%d.%d%d", (x>>8)&15, (x>>4)&15, (x>>0)&15)
+	}
 }
 
 func indent(s string) string {
@@ -343,19 +344,19 @@ func c2go_Endpoint_Descriptor(x *C.struct_libusb_endpoint_descriptor) *Endpoint_
 	}
 }
 
-// return a indented string for an Endpoint_Descriptor
+// return a string for an Endpoint_Descriptor
 func Endpoint_Descriptor_str(x *Endpoint_Descriptor) string {
 	s := make([]string, 0, 1)
 	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
 	s = append(s, fmt.Sprintf("bDescriptorType %d", x.BDescriptorType))
-	s = append(s, fmt.Sprintf("bEndpointAddress %d", x.BEndpointAddress))
+	s = append(s, fmt.Sprintf("bEndpointAddress 0x%02x", x.BEndpointAddress))
 	s = append(s, fmt.Sprintf("bmAttributes %d", x.BmAttributes))
 	s = append(s, fmt.Sprintf("wMaxPacketSize %d", x.WMaxPacketSize))
 	s = append(s, fmt.Sprintf("bInterval %d", x.BInterval))
 	s = append(s, fmt.Sprintf("bRefresh %d", x.BRefresh))
 	s = append(s, fmt.Sprintf("bSynchAddress %d", x.BSynchAddress))
 	s = append(s, fmt.Sprintf("extra %s", Extra_str(x.Extra)))
-	return indent(strings.Join(s, "\n"))
+	return strings.Join(s, "\n")
 }
 
 //-----------------------------------------------------------------------------
@@ -404,7 +405,7 @@ func c2go_Interface_Descriptor(x *C.struct_libusb_interface_descriptor) *Interfa
 	}
 }
 
-// return a indented string for an Interface_Descriptor
+// return a string for an Interface_Descriptor
 func Interface_Descriptor_str(x *Interface_Descriptor) string {
 	s := make([]string, 0, 1)
 	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
@@ -418,10 +419,10 @@ func Interface_Descriptor_str(x *Interface_Descriptor) string {
 	s = append(s, fmt.Sprintf("iInterface %d", x.IInterface))
 	for i, v := range x.Endpoint {
 		s = append(s, fmt.Sprintf("Endpoint %d:", i))
-		s = append(s, fmt.Sprintf(Endpoint_Descriptor_str(v)))
+		s = append(s, indent(fmt.Sprintf(Endpoint_Descriptor_str(v))))
 	}
 	s = append(s, fmt.Sprintf("extra %s", Extra_str(x.Extra)))
-	return indent(strings.Join(s, "\n"))
+	return strings.Join(s, "\n")
 }
 
 //-----------------------------------------------------------------------------
@@ -450,15 +451,15 @@ func c2go_Interface(x *C.struct_libusb_interface) *Interface {
 	}
 }
 
-// return a indented string for an Interface
+// return a string for an Interface
 func Interface_str(x *Interface) string {
 	s := make([]string, 0, 1)
 	s = append(s, fmt.Sprintf("num_altsetting %d", x.Num_altsetting))
 	for i, v := range x.Altsetting {
 		s = append(s, fmt.Sprintf("Interface Descriptor %d:", i))
-		s = append(s, fmt.Sprintf(Interface_Descriptor_str(v)))
+		s = append(s, indent(fmt.Sprintf(Interface_Descriptor_str(v))))
 	}
-	return indent(strings.Join(s, "\n"))
+	return strings.Join(s, "\n")
 }
 
 //-----------------------------------------------------------------------------
@@ -505,7 +506,7 @@ func c2go_Config_Descriptor(x *C.struct_libusb_config_descriptor) *Config_Descri
 	}
 }
 
-// return a indented string for a Config_Descriptor
+// return a string for a Config_Descriptor
 func Config_Descriptor_str(x *Config_Descriptor) string {
 	s := make([]string, 0, 1)
 	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
@@ -518,10 +519,10 @@ func Config_Descriptor_str(x *Config_Descriptor) string {
 	s = append(s, fmt.Sprintf("MaxPower %d", x.MaxPower))
 	for i, v := range x.Interface {
 		s = append(s, fmt.Sprintf("Interface %d:", i))
-		s = append(s, fmt.Sprintf(Interface_str(v)))
+		s = append(s, indent(fmt.Sprintf(Interface_str(v))))
 	}
 	s = append(s, fmt.Sprintf("extra %s", Extra_str(x.Extra)))
-	return indent(strings.Join(s, "\n"))
+	return strings.Join(s, "\n")
 }
 
 //-----------------------------------------------------------------------------
@@ -739,24 +740,24 @@ func c2go_Device_Descriptor(x *C.struct_libusb_device_descriptor) *Device_Descri
 	}
 }
 
-// return a indented string for a Device_Descriptor
+// return a string for a Device_Descriptor
 func Device_Descriptor_str(x *Device_Descriptor) string {
 	s := make([]string, 0, 1)
 	s = append(s, fmt.Sprintf("bLength %d", x.BLength))
 	s = append(s, fmt.Sprintf("bDescriptorType %d", x.BDescriptorType))
-	s = append(s, fmt.Sprintf("bcdUSB %.2f", float32(bcd2int(int(x.BcdUSB)))/100.0))
+	s = append(s, fmt.Sprintf("bcdUSB %s", bcd2str(x.BcdUSB)))
 	s = append(s, fmt.Sprintf("bDeviceClass %d", x.BDeviceClass))
 	s = append(s, fmt.Sprintf("bDeviceSubClass %d", x.BDeviceSubClass))
 	s = append(s, fmt.Sprintf("bDeviceProtocol %d", x.BDeviceProtocol))
 	s = append(s, fmt.Sprintf("bMaxPacketSize0 %d", x.BMaxPacketSize0))
 	s = append(s, fmt.Sprintf("idVendor 0x%04x", x.IdVendor))
 	s = append(s, fmt.Sprintf("idProduct 0x%04x", x.IdProduct))
-	s = append(s, fmt.Sprintf("bcdDevice %.2f", float32(bcd2int(int(x.BcdDevice)))/100.0))
+	s = append(s, fmt.Sprintf("bcdDevice %s", bcd2str(x.BcdDevice)))
 	s = append(s, fmt.Sprintf("iManufacturer %d", x.IManufacturer))
 	s = append(s, fmt.Sprintf("iProduct %d", x.IProduct))
 	s = append(s, fmt.Sprintf("iSerialNumber %d", x.ISerialNumber))
 	s = append(s, fmt.Sprintf("bNumConfigurations %d", x.BNumConfigurations))
-	return indent(strings.Join(s, "\n"))
+	return strings.Join(s, "\n")
 }
 
 //-----------------------------------------------------------------------------
