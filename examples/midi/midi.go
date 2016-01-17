@@ -25,10 +25,6 @@ type ep_info struct {
 	ep  *libusb.Endpoint_Descriptor
 }
 
-// Korg Nano Key 2
-const vid uint16 = 0x944
-const pid uint16 = 0x115
-
 var quit bool = false
 
 const NOTES_IN_OCTAVE = 12
@@ -95,6 +91,7 @@ func midi_device(ctx libusb.Context, vid uint16, pid uint16) {
 
 	// record information on input endpoints
 	ep_in := make([]ep_info, 0, 1)
+	midi_found := false
 
 	for i := 0; i < int(dd.BNumConfigurations); i++ {
 		cd, err := libusb.Get_Config_Descriptor(dev, uint8(i))
@@ -105,6 +102,9 @@ func midi_device(ctx libusb.Context, vid uint16, pid uint16) {
 		// iterate across endpoints
 		for _, itf := range cd.Interface {
 			for _, id := range itf.Altsetting {
+				if id.BInterfaceClass == libusb.CLASS_AUDIO && id.BInterfaceSubClass == 3 {
+					midi_found = true
+				}
 				for _, ep := range id.Endpoint {
 					if ep.BEndpointAddress&libusb.ENDPOINT_IN != 0 {
 						ep_in = append(ep_in, ep_info{itf: i, ep: ep})
@@ -114,6 +114,11 @@ func midi_device(ctx libusb.Context, vid uint16, pid uint16) {
 		}
 
 		libusb.Free_Config_Descriptor(cd)
+	}
+
+	if midi_found == false || len(ep_in) == 0 {
+		fmt.Printf("no midi inputs found\n")
+		return
 	}
 
 	fmt.Printf("num input endpoints %d\n", len(ep_in))
@@ -147,7 +152,10 @@ func midi_main() int {
 		return -1
 	}
 	defer libusb.Exit(ctx)
-	midi_device(ctx, 0x944, 0x115)
+
+	midi_device(ctx, 0x0944, 0x0115) // Korg Nano Key 2
+	//midi_device(ctx, 0x041e, 0x3f0e) // Creative Technology, E-MU XMidi1X1 Tab
+
 	return 0
 }
 

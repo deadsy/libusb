@@ -762,6 +762,52 @@ func Device_Descriptor_str(x *Device_Descriptor) string {
 
 //-----------------------------------------------------------------------------
 
+/*
+
+struct libusb_transfer {
+	libusb_device_handle *dev_handle;
+	uint8_t flags;
+	unsigned char endpoint;
+	unsigned char type;
+	unsigned int timeout;
+	enum libusb_transfer_status status;
+	int length;
+	int actual_length;
+	libusb_transfer_cb_fn callback;
+	void *user_data;
+	unsigned char *buffer;
+	int num_iso_packets;
+	struct libusb_iso_packet_descriptor iso_packet_desc[];
+};
+
+*/
+
+// The generic USB transfer structure. The user populates this structure and
+// then submits it in order to request a transfer. After the transfer has
+// completed, the library populates the transfer with the results and passes
+// it back to the user.
+type Transfer struct {
+	ptr *C.struct_libusb_transfer
+}
+
+func c2go_Transfer(x *C.struct_libusb_transfer) *Transfer {
+	return &Transfer{
+		ptr: x,
+	}
+}
+
+func go2c_Transfer(x *Transfer) *C.struct_libusb_transfer {
+	return x.ptr
+}
+
+// return a string for a Device_Descriptor
+func Transfer_str(x *Transfer) string {
+	s := make([]string, 0, 1)
+	return strings.Join(s, "\n")
+}
+
+//-----------------------------------------------------------------------------
+
 // Structure providing the version of the libusb runtime.
 type Version struct {
 	ptr      *C.struct_libusb_version
@@ -1186,15 +1232,63 @@ func Get_String_Descriptor(hdl Device_Handle, desc_index uint8, langid uint16, d
 //-----------------------------------------------------------------------------
 //Asynchronous device I/O
 
-// int 	libusb_alloc_streams (libusb_device_handle *dev, uint32_t num_streams, unsigned char *endpoints, int num_endpoints)
-// int 	libusb_free_streams (libusb_device_handle *dev, unsigned char *endpoints, int num_endpoints)
-// struct libusb_transfer * 	libusb_alloc_transfer (int iso_packets)
-// void 	libusb_free_transfer (struct libusb_transfer *transfer)
-// int 	libusb_submit_transfer (struct libusb_transfer *transfer)
-// int 	libusb_cancel_transfer (struct libusb_transfer *transfer)
-// void 	libusb_transfer_set_stream_id (struct libusb_transfer *transfer, uint32_t stream_id)
-// uint32_t 	libusb_transfer_get_stream_id (struct libusb_transfer *transfer)
-// static unsigned char * 	libusb_control_transfer_get_data (struct libusb_transfer *transfer)
+func Alloc_Streams(dev Device_Handle, num_streams uint32, endpoints []byte) (int, error) {
+	rc := int(C.libusb_alloc_streams(dev, (C.uint32_t)(num_streams), (*C.uchar)(&endpoints[0]), (C.int)(len(endpoints))))
+	if rc < 0 {
+		return 0, &libusb_error{rc}
+	}
+	return rc, nil
+}
+
+func Free_Streams(dev Device_Handle, endpoints []byte) error {
+	rc := int(C.libusb_free_streams(dev, (*C.uchar)(&endpoints[0]), (C.int)(len(endpoints))))
+	if rc != 0 {
+		return &libusb_error{rc}
+	}
+	return nil
+}
+
+func Alloc_Transfer(iso_packets int) (*Transfer, error) {
+	ptr := C.libusb_alloc_transfer((C.int)(iso_packets))
+	if ptr == nil {
+		return nil, &libusb_error{ERROR_OTHER}
+	}
+	return c2go_Transfer(ptr), nil
+}
+
+func Free_Transfer(transfer *Transfer) {
+	C.libusb_free_transfer(transfer.ptr)
+}
+
+func Submit_Transfer(transfer *Transfer) error {
+	rc := int(C.libusb_submit_transfer(go2c_Transfer(transfer)))
+	if rc != 0 {
+		return &libusb_error{rc}
+	}
+	return nil
+}
+
+func Cancel_Transfer(transfer *Transfer) error {
+	rc := int(C.libusb_cancel_transfer(go2c_Transfer(transfer)))
+	if rc != 0 {
+		return &libusb_error{rc}
+	}
+	return nil
+}
+
+func Transfer_Set_Stream_ID(transfer *Transfer, stream_id uint32) {
+	C.libusb_transfer_set_stream_id(go2c_Transfer(transfer), (C.uint32_t)(stream_id))
+}
+
+func Transfer_Get_Stream_ID(transfer *Transfer) uint32 {
+	return uint32(C.libusb_transfer_get_stream_id(go2c_Transfer(transfer)))
+}
+
+func Control_Transfer_Get_Data(transfer *Transfer) *byte {
+  // should this return a slice? - what's the length?
+	return (*byte)(C.libusb_control_transfer_get_data(go2c_Transfer(transfer)))
+}
+
 // static struct libusb_control_setup * 	libusb_control_transfer_get_setup (struct libusb_transfer *transfer)
 // static void 	libusb_fill_control_setup (unsigned char *buffer, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex, uint16_t wLength)
 // static void 	libusb_fill_control_transfer (struct libusb_transfer *transfer, libusb_device_handle *dev_handle, unsigned char *buffer, libusb_transfer_cb_fn callback, void *user_data, unsigned int timeout)
