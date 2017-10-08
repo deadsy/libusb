@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/deadsy/libusb"
 	"os"
+
+	"github.com/deadsy/libusb"
 )
 
 var extra_info bool = true

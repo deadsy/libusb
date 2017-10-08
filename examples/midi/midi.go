@@ -14,10 +14,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/deadsy/libusb"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/deadsy/libusb"
 )
 
 type ep_info struct {

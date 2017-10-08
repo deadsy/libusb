@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/deadsy/libusb"
 	"log"
+
+	"github.com/deadsy/libusb"
 )
 
 func main() {
