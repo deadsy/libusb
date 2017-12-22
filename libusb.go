@@ -10,7 +10,7 @@ Golang wrapper for libusb-1.0
 package libusb
 
 /*
-#cgo LDFLAGS: -lusb-1.0
+#cgo pkg-config: libusb-1.0
 #include <libusb-1.0/libusb.h>
 
 // When a C struct ends with a zero-sized field, but the struct itself is not zero-sized,
