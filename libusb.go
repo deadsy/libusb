@@ -896,6 +896,9 @@ func Free_Device_List(list []Device, unref_devices int) {
 	if list == nil {
 		return
 	}
+	if len(list) == 0 {
+		return
+	}
 	C.libusb_free_device_list((**C.struct_libusb_device)(&list[0]), C.int(unref_devices))
 }
 
