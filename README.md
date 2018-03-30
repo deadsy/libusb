@@ -1,3 +1,5 @@
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/deadsy/libusb)](https://goreportcard.com/report/github.com/deadsy/libusb)
 [![GoDoc](https://godoc.org/github.com/deadsy/libusb?status.svg)](https://godoc.org/github.com/deadsy/libusb)
 
 # libusb
